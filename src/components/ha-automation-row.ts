@@ -1,7 +1,7 @@
 import { mdiChevronUp } from "@mdi/js";
 import type { TemplateResult } from "lit";
 import { css, html, LitElement, nothing } from "lit";
-import { customElement, property } from "lit/decorators";
+import { customElement, property, query } from "lit/decorators";
 import { fireEvent } from "../common/dom/fire_event";
 import "./ha-icon-button";
 
@@ -16,11 +16,19 @@ export class HaAutomationRow extends LitElement {
   @property({ type: Boolean, reflect: true })
   public selected = false;
 
+  @property({ type: Boolean, reflect: true, attribute: "sort-selected" })
+  public sortSelected = false;
+
   @property({ type: Boolean, reflect: true })
   public disabled = false;
 
   @property({ type: Boolean, reflect: true, attribute: "building-block" })
   public buildingBlock = false;
+
+  @property({ type: Boolean, reflect: true }) public highlight?: boolean;
+
+  @query(".row")
+  private _rowElement?: HTMLDivElement;
 
   protected render(): TemplateResult {
     return html`
@@ -44,7 +52,9 @@ export class HaAutomationRow extends LitElement {
           <slot name="leading-icon"></slot>
         </div>
         <slot class="header" name="header"></slot>
-        <slot name="icons"></slot>
+        <div class="icons">
+          <slot name="icons"></slot>
+        </div>
       </div>
     `;
   }
@@ -66,13 +76,42 @@ export class HaAutomationRow extends LitElement {
     if (ev.defaultPrevented) {
       return;
     }
-    if (ev.key !== "Enter" && ev.key !== " ") {
+
+    if (
+      ev.key !== "Enter" &&
+      ev.key !== " " &&
+      !(
+        (this.sortSelected || ev.altKey) &&
+        !(ev.ctrlKey || ev.metaKey) &&
+        !ev.shiftKey &&
+        (ev.key === "ArrowUp" || ev.key === "ArrowDown")
+      )
+    ) {
       return;
     }
     ev.preventDefault();
     ev.stopPropagation();
 
+    if (ev.key === "ArrowUp" || ev.key === "ArrowDown") {
+      if (ev.key === "ArrowUp") {
+        fireEvent(this, "move-up");
+        return;
+      }
+      fireEvent(this, "move-down");
+      return;
+    }
+    if (this.sortSelected && (ev.key === "Enter" || ev.key === " ")) {
+      fireEvent(this, "stop-sort-selection");
+      return;
+    }
+
     this.click();
+  }
+
+  public focus() {
+    requestAnimationFrame(() => {
+      this._rowElement?.focus();
+    });
   }
 
   static styles = css`
@@ -81,12 +120,11 @@ export class HaAutomationRow extends LitElement {
     }
     .row {
       display: flex;
-      padding: 0 8px;
+      padding: 0 var(--ha-space-3);
       min-height: 48px;
-      align-items: center;
+      align-items: flex-start;
       cursor: pointer;
       overflow: hidden;
-      font-weight: var(--ha-font-weight-medium);
       outline: none;
       border-radius: var(--ha-card-border-radius, var(--ha-border-radius-lg));
     }
@@ -97,21 +135,26 @@ export class HaAutomationRow extends LitElement {
     .expand-button {
       transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1);
       color: var(--ha-color-on-neutral-quiet);
+      margin-left: calc(var(--ha-space-2) * -1);
     }
     :host([building-block]) .leading-icon-wrapper {
       background-color: var(--ha-color-fill-neutral-loud-resting);
       border-radius: var(--ha-border-radius-md);
-      padding: 4px;
+      padding: var(--ha-space-1);
+      margin-top: 10px;
       display: flex;
       justify-content: center;
       align-items: center;
       transform: rotate(45deg);
     }
+    .leading-icon-wrapper {
+      padding-top: var(--ha-space-3);
+    }
     ::slotted([slot="leading-icon"]) {
       color: var(--ha-color-on-neutral-quiet);
     }
     :host([building-block]) ::slotted([slot="leading-icon"]) {
-      --mdc-icon-size: 20px;
+      --mdc-icon-size: var(--ha-space-5);
       color: var(--white-color);
       transform: rotate(-45deg);
     }
@@ -132,7 +175,27 @@ export class HaAutomationRow extends LitElement {
     ::slotted([slot="header"]) {
       flex: 1;
       overflow-wrap: anywhere;
-      margin: 0 12px;
+      margin: 0 var(--ha-space-3);
+    }
+    .icons {
+      display: flex;
+      align-items: center;
+    }
+    :host([sort-selected]) .row {
+      outline: solid;
+      outline-color: rgba(var(--rgb-accent-color), 0.6);
+      outline-offset: -2px;
+      outline-width: 2px;
+      background-color: rgba(var(--rgb-accent-color), 0.08);
+    }
+    .row:hover {
+      background-color: rgba(var(--rgb-primary-text-color), 0.04);
+    }
+    :host([highlight]) .row {
+      background-color: rgba(var(--rgb-primary-color), 0.08);
+    }
+    :host([highlight]) .row:hover {
+      background-color: rgba(var(--rgb-primary-color), 0.16);
     }
   `;
 }
@@ -144,5 +207,9 @@ declare global {
 
   interface HASSDomEvents {
     "toggle-collapsed": undefined;
+    "stop-sort-selection": undefined;
+    "copy-row": undefined;
+    "cut-row": undefined;
+    "delete-row": undefined;
   }
 }

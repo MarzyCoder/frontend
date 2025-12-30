@@ -10,8 +10,8 @@ import "../../../../components/ha-card";
 import "../../../../components/ha-icon";
 import "../../../../components/ha-list";
 import "../../../../components/ha-list-item";
-import type { ExtEntityRegistryEntry } from "../../../../data/entity_registry";
-import { getExtendedEntityRegistryEntry } from "../../../../data/entity_registry";
+import type { ExtEntityRegistryEntry } from "../../../../data/entity/entity_registry";
+import { getExtendedEntityRegistryEntry } from "../../../../data/entity/entity_registry";
 import { entryIcon } from "../../../../data/icons";
 import { showMoreInfoDialog } from "../../../../dialogs/more-info/show-ha-more-info-dialog";
 import type { HomeAssistant } from "../../../../types";
@@ -172,7 +172,9 @@ export class HaDeviceEntitiesCard extends LitElement {
       element.hass = this.hass;
       const stateObj = this.hass.states[entry.entity_id];
 
-      let name = computeEntityName(stateObj, this.hass) || this.deviceName;
+      let name =
+        computeEntityName(stateObj, this.hass.entities, this.hass.devices) ||
+        this.deviceName;
 
       if (entry.hidden_by) {
         name += ` (${this.hass.localize(
@@ -226,7 +228,7 @@ export class HaDeviceEntitiesCard extends LitElement {
     addEntitiesToLovelaceView(
       this,
       this.hass,
-      computeCards(this.hass.states, entities, {
+      computeCards(this.hass, entities, {
         title: this.deviceName,
       }),
       computeSection(entities, {

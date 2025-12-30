@@ -2,9 +2,12 @@ import type { AlarmMode } from "../../../data/alarm_control_panel";
 import type { HvacMode } from "../../../data/climate";
 import type { OperationMode } from "../../../data/water_heater";
 
+export type ButtonCardData = Record<string, any>;
+
 export interface ButtonCardFeatureConfig {
   type: "button";
   action_name?: string;
+  data?: ButtonCardData;
 }
 
 export interface CoverOpenCloseCardFeatureConfig {
@@ -45,6 +48,11 @@ export interface MediaPlayerPlaybackCardFeatureConfig {
 
 export interface MediaPlayerVolumeSliderCardFeatureConfig {
   type: "media-player-volume-slider";
+}
+
+export interface MediaPlayerVolumeButtonsCardFeatureConfig {
+  type: "media-player-volume-buttons";
+  step?: number;
 }
 
 export interface FanDirectionCardFeatureConfig {
@@ -137,6 +145,7 @@ export interface ToggleCardFeatureConfig {
 
 export interface WaterHeaterOperationModesCardFeatureConfig {
   type: "water-heater-operation-modes";
+  style?: "dropdown" | "icons";
   operation_modes?: OperationMode[];
 }
 
@@ -187,9 +196,10 @@ export interface UpdateActionsCardFeatureConfig {
   backup?: "yes" | "no" | "ask";
 }
 
-export interface HistoryChartCardFeatureConfig {
-  type: "history-chart";
-  hours_to_show: number;
+export interface TrendGraphCardFeatureConfig {
+  type: "trend-graph";
+  hours_to_show?: number;
+  detail?: boolean;
 }
 
 export const AREA_CONTROLS = [
@@ -217,6 +227,8 @@ export interface AreaControlsCardFeatureConfig {
 
 export interface BarGaugeCardFeatureConfig {
   type: "bar-gauge";
+  min?: number;
+  max?: number;
 }
 
 export type LovelaceCardFeaturePosition = "bottom" | "inline";
@@ -239,6 +251,7 @@ export type LovelaceCardFeatureConfig =
   | FanOscillateCardFeatureConfig
   | FanPresetModesCardFeatureConfig
   | FanSpeedCardFeatureConfig
+  | TrendGraphCardFeatureConfig
   | HumidifierToggleCardFeatureConfig
   | HumidifierModesCardFeatureConfig
   | LawnMowerCommandsCardFeatureConfig
@@ -247,10 +260,11 @@ export type LovelaceCardFeatureConfig =
   | LockCommandsCardFeatureConfig
   | LockOpenDoorCardFeatureConfig
   | MediaPlayerPlaybackCardFeatureConfig
+  | MediaPlayerVolumeButtonsCardFeatureConfig
   | MediaPlayerVolumeSliderCardFeatureConfig
   | NumericInputCardFeatureConfig
   | SelectOptionsCardFeatureConfig
-  | HistoryChartCardFeatureConfig
+  | TrendGraphCardFeatureConfig
   | TargetHumidityCardFeatureConfig
   | TargetTemperatureCardFeatureConfig
   | ToggleCardFeatureConfig

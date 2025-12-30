@@ -33,27 +33,35 @@ const STRATEGIES: Record<LovelaceStrategyConfigType, Record<string, any>> = {
     map: () => import("./map/map-dashboard-strategy"),
     iframe: () => import("./iframe/iframe-dashboard-strategy"),
     areas: () => import("./areas/areas-dashboard-strategy"),
-    overview: () => import("./overview/overview-dashboard-strategy"),
+    home: () => import("./home/home-dashboard-strategy"),
   },
   view: {
     "original-states": () =>
       import("./original-states/original-states-view-strategy"),
+    "energy-overview": () =>
+      import("../../energy/strategies/energy-overview-view-strategy"),
     energy: () => import("../../energy/strategies/energy-view-strategy"),
+    water: () => import("../../energy/strategies/water-view-strategy"),
+    gas: () => import("../../energy/strategies/gas-view-strategy"),
+    power: () => import("../../energy/strategies/power-view-strategy"),
     map: () => import("./map/map-view-strategy"),
     iframe: () => import("./iframe/iframe-view-strategy"),
     area: () => import("./areas/area-view-strategy"),
     "areas-overview": () => import("./areas/areas-overview-view-strategy"),
-    "overview-home": () => import("./overview/overview-home-view-strategy"),
-    "overview-lights": () => import("./overview/overview-lights-view-strategy"),
-    "overview-climate": () =>
-      import("./overview/overview-climate-view-strategy"),
-    "overview-security": () =>
-      import("./overview/overview-security-view-strategy"),
-    "overview-media-players": () =>
-      import("./overview/overview-media-players-view-strategy"),
-    "overview-area": () => import("./overview/overview-area-view-strategy"),
+    "home-overview": () => import("./home/home-overview-view-strategy"),
+    "home-media-players": () =>
+      import("./home/home-media-players-view-strategy"),
+    "home-area": () => import("./home/home-area-view-strategy"),
+    "home-other-devices": () =>
+      import("./home/home-other-devices-view-strategy"),
+    light: () => import("../../light/strategies/light-view-strategy"),
+    security: () => import("../../security/strategies/security-view-strategy"),
+    climate: () => import("../../climate/strategies/climate-view-strategy"),
   },
-  section: {},
+  section: {
+    "common-controls": () =>
+      import("./usage_prediction/common-controls-section-strategy"),
+  },
 };
 
 export type LovelaceStrategyConfigType = "dashboard" | "view" | "section";

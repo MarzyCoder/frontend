@@ -1,18 +1,35 @@
+import "@home-assistant/webawesome/dist/components/divider/divider";
 import {
+  mdiAppleKeyboardCommand,
+  mdiContentCopy,
+  mdiContentCut,
   mdiDelete,
   mdiIdentifier,
   mdiPlayCircleOutline,
   mdiPlaylistEdit,
+  mdiPlusCircleMultipleOutline,
   mdiRenameBox,
   mdiStopCircleOutline,
 } from "@mdi/js";
-import { css, html, LitElement, nothing } from "lit";
+import { html, LitElement, nothing } from "lit";
 import { customElement, property, query, state } from "lit/decorators";
+import { keyed } from "lit/directives/keyed";
 import { fireEvent } from "../../../../common/dom/fire_event";
 import { handleStructError } from "../../../../common/structs/handle-errors";
-import type { TriggerSidebarConfig } from "../../../../data/automation";
-import { isTriggerList } from "../../../../data/trigger";
+import "../../../../components/ha-dropdown-item";
+import type { HaDropdownItem } from "../../../../components/ha-dropdown-item";
+import type {
+  LegacyTrigger,
+  TriggerSidebarConfig,
+} from "../../../../data/automation";
+import {
+  getTriggerDomain,
+  getTriggerObjectId,
+  isTriggerList,
+} from "../../../../data/trigger";
 import type { HomeAssistant } from "../../../../types";
+import { isMac } from "../../../../util/is_mac";
+import { overflowStyles, sidebarEditorStyles } from "../styles";
 import "../trigger/ha-automation-trigger-editor";
 import type HaAutomationTriggerEditor from "../trigger/ha-automation-trigger-editor";
 import "./ha-automation-sidebar-card";
@@ -28,6 +45,11 @@ export default class HaAutomationSidebarTrigger extends LitElement {
   @property({ type: Boolean }) public disabled = false;
 
   @property({ type: Boolean, attribute: "yaml-mode" }) public yamlMode = false;
+
+  @property({ type: Boolean }) public narrow = false;
+
+  @property({ type: Number, attribute: "sidebar-key" })
+  public sidebarKey?: number;
 
   @state() private _requestShowId = false;
 
@@ -50,9 +72,8 @@ export default class HaAutomationSidebarTrigger extends LitElement {
   }
 
   protected render() {
-    const disabled =
-      this.disabled ||
-      ("enabled" in this.config.config && this.config.config.enabled === false);
+    const rowDisabled =
+      "enabled" in this.config.config && this.config.config.enabled === false;
     const type = isTriggerList(this.config.config)
       ? "list"
       : this.config.config.trigger;
@@ -61,9 +82,18 @@ export default class HaAutomationSidebarTrigger extends LitElement {
       "ui.panel.config.automation.editor.triggers.trigger"
     );
 
-    const title = this.hass.localize(
-      `ui.panel.config.automation.editor.triggers.type.${type}.label`
-    );
+    const domain =
+      "trigger" in this.config.config &&
+      getTriggerDomain(this.config.config.trigger);
+    const triggerName =
+      "trigger" in this.config.config &&
+      getTriggerObjectId(this.config.config.trigger);
+
+    const title =
+      this.hass.localize(
+        `ui.panel.config.automation.editor.triggers.type.${type as LegacyTrigger["trigger"]}.label`
+      ) ||
+      this.hass.localize(`component.${domain}.triggers.${triggerName}.name`);
 
     return html`
       <ha-automation-sidebar-card
@@ -71,83 +101,193 @@ export default class HaAutomationSidebarTrigger extends LitElement {
         .isWide=${this.isWide}
         .yamlMode=${this.yamlMode}
         .warnings=${this._warnings}
+        .narrow=${this.narrow}
+        @wa-select=${this._handleDropdownSelect}
       >
         <span slot="title">${title}</span>
-        <span slot="subtitle">${subtitle}</span>
-        <ha-md-menu-item
-          slot="menu-items"
-          .clickAction=${this.config.rename}
-          .disabled=${disabled || type === "list"}
+        <span slot="subtitle"
+          >${subtitle}${rowDisabled
+            ? ` (${this.hass.localize("ui.panel.config.automation.editor.actions.disabled")})`
+            : ""}</span
         >
-          ${this.hass.localize(
-            "ui.panel.config.automation.editor.triggers.rename"
-          )}
-          <ha-svg-icon slot="start" .path=${mdiRenameBox}></ha-svg-icon>
-        </ha-md-menu-item>
+        <ha-dropdown-item
+          slot="menu-items"
+          value="rename"
+          .disabled=${this.disabled || type === "list"}
+        >
+          <ha-svg-icon slot="icon" .path=${mdiRenameBox}></ha-svg-icon>
+          <div class="overflow-label">
+            ${this.hass.localize(
+              "ui.panel.config.automation.editor.triggers.rename"
+            )}
+            <span class="shortcut-placeholder ${isMac ? "mac" : ""}"></span>
+          </div>
+        </ha-dropdown-item>
+
         ${!this.yamlMode &&
         !("id" in this.config.config) &&
         !this._requestShowId
-          ? html`<ha-md-menu-item
+          ? html`<ha-dropdown-item
               slot="menu-items"
-              .clickAction=${this._showTriggerId}
-              .disabled=${disabled || type === "list"}
+              value="show_id"
+              .disabled=${this.disabled || type === "list"}
             >
-              ${this.hass.localize(
-                "ui.panel.config.automation.editor.triggers.edit_id"
-              )}
-              <ha-svg-icon slot="start" .path=${mdiIdentifier}></ha-svg-icon>
-            </ha-md-menu-item>`
+              <ha-svg-icon slot="icon" .path=${mdiIdentifier}></ha-svg-icon>
+              <div class="overflow-label">
+                ${this.hass.localize(
+                  "ui.panel.config.automation.editor.triggers.edit_id"
+                )}
+                <span class="shortcut-placeholder ${isMac ? "mac" : ""}"></span>
+              </div>
+            </ha-dropdown-item>`
           : nothing}
-        <ha-md-menu-item
+
+        <wa-divider slot="menu-items"></wa-divider>
+
+        <ha-dropdown-item
           slot="menu-items"
-          .clickAction=${this._toggleYamlMode}
-          .disabled=${!this.config.uiSupported || !!this._warnings}
+          value="duplicate"
+          .disabled=${this.disabled}
         >
           ${this.hass.localize(
-            `ui.panel.config.automation.editor.edit_${!this.yamlMode ? "yaml" : "ui"}`
-          )}
-          <ha-svg-icon slot="start" .path=${mdiPlaylistEdit}></ha-svg-icon>
-        </ha-md-menu-item>
-        <ha-md-divider
-          slot="menu-items"
-          role="separator"
-          tabindex="-1"
-        ></ha-md-divider>
-        <ha-md-menu-item
-          slot="menu-items"
-          .clickAction=${this.config.disable}
-          .disabled=${type === "list"}
-        >
-          ${this.hass.localize(
-            `ui.panel.config.automation.editor.actions.${disabled ? "enable" : "disable"}`
+            "ui.panel.config.automation.editor.triggers.duplicate"
           )}
           <ha-svg-icon
-            slot="start"
-            .path=${this.disabled ? mdiPlayCircleOutline : mdiStopCircleOutline}
+            slot="icon"
+            .path=${mdiPlusCircleMultipleOutline}
           ></ha-svg-icon>
-        </ha-md-menu-item>
-        <ha-md-menu-item
+        </ha-dropdown-item>
+
+        <ha-dropdown-item slot="menu-items" value="copy">
+          <ha-svg-icon slot="icon" .path=${mdiContentCopy}></ha-svg-icon>
+          <div class="overflow-label">
+            ${this.hass.localize(
+              "ui.panel.config.automation.editor.triggers.copy"
+            )}
+            ${!this.narrow
+              ? html`<span class="shortcut">
+                  <span
+                    >${isMac
+                      ? html`<ha-svg-icon
+                          .path=${mdiAppleKeyboardCommand}
+                        ></ha-svg-icon>`
+                      : this.hass.localize(
+                          "ui.panel.config.automation.editor.ctrl"
+                        )}</span
+                  >
+                  <span>+</span>
+                  <span>C</span>
+                </span>`
+              : nothing}
+          </div>
+        </ha-dropdown-item>
+
+        <ha-dropdown-item
           slot="menu-items"
-          .clickAction=${this.config.delete}
+          value="cut"
           .disabled=${this.disabled}
-          class="warning"
         >
-          ${this.hass.localize(
-            "ui.panel.config.automation.editor.actions.delete"
-          )}
-          <ha-svg-icon slot="start" .path=${mdiDelete}></ha-svg-icon>
-        </ha-md-menu-item>
-        <ha-automation-trigger-editor
-          class="sidebar-editor"
-          .hass=${this.hass}
-          .trigger=${this.config.config}
-          @value-changed=${this._valueChangedSidebar}
-          .uiSupported=${this.config.uiSupported}
-          .showId=${this._requestShowId}
-          .yamlMode=${this.yamlMode}
+          <ha-svg-icon slot="icon" .path=${mdiContentCut}></ha-svg-icon>
+          <div class="overflow-label">
+            ${this.hass.localize(
+              "ui.panel.config.automation.editor.triggers.cut"
+            )}
+            ${!this.narrow
+              ? html`<span class="shortcut">
+                  <span
+                    >${isMac
+                      ? html`<ha-svg-icon
+                          .path=${mdiAppleKeyboardCommand}
+                        ></ha-svg-icon>`
+                      : this.hass.localize(
+                          "ui.panel.config.automation.editor.ctrl"
+                        )}</span
+                  >
+                  <span>+</span>
+                  <span>X</span>
+                </span>`
+              : nothing}
+          </div>
+        </ha-dropdown-item>
+        <ha-dropdown-item
+          slot="menu-items"
+          value="toggle_yaml_mode"
+          .disabled=${!this.config.uiSupported || !!this._warnings}
+        >
+          <ha-svg-icon slot="icon" .path=${mdiPlaylistEdit}></ha-svg-icon>
+          <div class="overflow-label">
+            ${this.hass.localize(
+              `ui.panel.config.automation.editor.edit_${!this.yamlMode ? "yaml" : "ui"}`
+            )}
+            <span class="shortcut-placeholder ${isMac ? "mac" : ""}"></span>
+          </div>
+        </ha-dropdown-item>
+        <wa-divider slot="menu-items"></wa-divider>
+        <ha-dropdown-item
+          slot="menu-items"
+          value="disable"
+          .disabled=${this.disabled || type === "list"}
+        >
+          <ha-svg-icon
+            slot="icon"
+            .path=${rowDisabled ? mdiPlayCircleOutline : mdiStopCircleOutline}
+          ></ha-svg-icon>
+          <div class="overflow-label">
+            ${this.hass.localize(
+              `ui.panel.config.automation.editor.actions.${rowDisabled ? "enable" : "disable"}`
+            )}
+            <span class="shortcut-placeholder ${isMac ? "mac" : ""}"></span>
+          </div>
+        </ha-dropdown-item>
+        <ha-dropdown-item
+          slot="menu-items"
+          value="delete"
           .disabled=${this.disabled}
-          @ui-mode-not-available=${this._handleUiModeNotAvailable}
-        ></ha-automation-trigger-editor>
+          variant="danger"
+        >
+          <ha-svg-icon slot="icon" .path=${mdiDelete}></ha-svg-icon>
+          <div class="overflow-label">
+            ${this.hass.localize(
+              "ui.panel.config.automation.editor.actions.delete"
+            )}
+            ${!this.narrow
+              ? html`<span class="shortcut">
+                  <span
+                    >${isMac
+                      ? html`<ha-svg-icon
+                          .path=${mdiAppleKeyboardCommand}
+                        ></ha-svg-icon>`
+                      : this.hass.localize(
+                          "ui.panel.config.automation.editor.ctrl"
+                        )}</span
+                  >
+                  <span>+</span>
+                  <span
+                    >${this.hass.localize(
+                      "ui.panel.config.automation.editor.del"
+                    )}</span
+                  >
+                </span>`
+              : nothing}
+          </div>
+        </ha-dropdown-item>
+        ${keyed(
+          this.sidebarKey,
+          html`<ha-automation-trigger-editor
+            class="sidebar-editor"
+            .hass=${this.hass}
+            .trigger=${this.config.config}
+            .description=${this.config.description}
+            @value-changed=${this._valueChangedSidebar}
+            @yaml-changed=${this._yamlChangedSidebar}
+            .uiSupported=${this.config.uiSupported}
+            .showId=${this._requestShowId}
+            .yamlMode=${this.yamlMode}
+            .disabled=${this.disabled}
+            @ui-mode-not-available=${this._handleUiModeNotAvailable}
+            sidebar
+          ></ha-automation-trigger-editor>`
+        )}
       </ha-automation-sidebar-card>
     `;
   }
@@ -174,6 +314,12 @@ export default class HaAutomationSidebarTrigger extends LitElement {
     }
   }
 
+  private _yamlChangedSidebar(ev: CustomEvent) {
+    ev.stopPropagation();
+
+    this.config?.save?.(ev.detail.value);
+  }
+
   private _toggleYamlMode = () => {
     fireEvent(this, "toggle-yaml-mode");
   };
@@ -182,11 +328,42 @@ export default class HaAutomationSidebarTrigger extends LitElement {
     this._requestShowId = true;
   };
 
-  static styles = css`
-    .sidebar-editor {
-      padding-top: 64px;
+  private _handleDropdownSelect(ev: CustomEvent<{ item: HaDropdownItem }>) {
+    const action = ev.detail?.item?.value;
+
+    if (!action) {
+      return;
     }
-  `;
+
+    switch (action) {
+      case "rename":
+        this.config.rename();
+        break;
+      case "show_id":
+        this._showTriggerId();
+        break;
+      case "duplicate":
+        this.config.duplicate();
+        break;
+      case "copy":
+        this.config.copy();
+        break;
+      case "cut":
+        this.config.cut();
+        break;
+      case "toggle_yaml_mode":
+        this._toggleYamlMode();
+        break;
+      case "disable":
+        this.config.disable();
+        break;
+      case "delete":
+        this.config.delete();
+        break;
+    }
+  }
+
+  static styles = [sidebarEditorStyles, overflowStyles];
 }
 
 declare global {

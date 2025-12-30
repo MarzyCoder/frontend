@@ -23,6 +23,7 @@ import "../card-features/hui-light-color-temp-card-feature";
 import "../card-features/hui-lock-commands-card-feature";
 import "../card-features/hui-lock-open-door-card-feature";
 import "../card-features/hui-media-player-playback-card-feature";
+import "../card-features/hui-media-player-volume-buttons-card-feature";
 import "../card-features/hui-media-player-volume-slider-card-feature";
 import "../card-features/hui-numeric-input-card-feature";
 import "../card-features/hui-select-options-card-feature";
@@ -36,7 +37,7 @@ import "../card-features/hui-valve-position-card-feature";
 import "../card-features/hui-water-heater-operation-modes-card-feature";
 import "../card-features/hui-area-controls-card-feature";
 import "../card-features/hui-bar-gauge-card-feature";
-import "../card-features/hui-history-chart-card-feature";
+import "../card-features/hui-trend-graph-card-feature";
 
 import type { LovelaceCardFeatureConfig } from "../card-features/types";
 import {
@@ -72,10 +73,11 @@ const TYPES = new Set<LovelaceCardFeatureConfig["type"]>([
   "lock-commands",
   "lock-open-door",
   "media-player-playback",
+  "media-player-volume-buttons",
   "media-player-volume-slider",
   "numeric-input",
   "select-options",
-  "history-chart",
+  "trend-graph",
   "target-humidity",
   "target-temperature",
   "toggle",

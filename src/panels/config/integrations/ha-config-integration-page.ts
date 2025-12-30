@@ -33,12 +33,12 @@ import { getSignedPath } from "../../../data/auth";
 import type { ConfigEntry } from "../../../data/config_entries";
 import { ERROR_STATES, getConfigEntries } from "../../../data/config_entries";
 import { ATTENTION_SOURCES } from "../../../data/config_flow";
-import type { DeviceRegistryEntry } from "../../../data/device_registry";
+import type { DeviceRegistryEntry } from "../../../data/device/device_registry";
 import type { DiagnosticInfo } from "../../../data/diagnostics";
 import { fetchDiagnosticHandler } from "../../../data/diagnostics";
-import type { EntityRegistryEntry } from "../../../data/entity_registry";
-import { subscribeEntityRegistry } from "../../../data/entity_registry";
-import { fetchEntitySourcesWithCache } from "../../../data/entity_sources";
+import type { EntityRegistryEntry } from "../../../data/entity/entity_registry";
+import { subscribeEntityRegistry } from "../../../data/entity/entity_registry";
+import { fetchEntitySourcesWithCache } from "../../../data/entity/entity_sources";
 import { getErrorLogDownloadUrl } from "../../../data/error_log";
 import type {
   IntegrationLogInfo,
@@ -442,9 +442,7 @@ class HaConfigIntegrationPage extends SubscribeMixin(LitElement) {
                     : nothing}
                   ${this._manifest?.is_built_in &&
                   this._manifest.quality_scale &&
-                  Object.keys(QUALITY_SCALE_MAP).includes(
-                    this._manifest.quality_scale
-                  )
+                  this._manifest.quality_scale in QUALITY_SCALE_MAP
                     ? html`
                         <div class="integration-info">
                           <a
@@ -530,18 +528,20 @@ class HaConfigIntegrationPage extends SubscribeMixin(LitElement) {
                     </ha-button>
                   `
                 : nothing}
-              <ha-button
-                .appearance=${canAddDevice ? "filled" : "accent"}
-                @click=${this._addIntegration}
-              >
-                ${this._manifest?.integration_type
-                  ? this.hass.localize(
-                      `ui.panel.config.integrations.integration_page.add_${this._manifest.integration_type}`
-                    )
-                  : this.hass.localize(
-                      `ui.panel.config.integrations.integration_page.add_entry`
-                    )}
-              </ha-button>
+              ${this._manifest?.integration_type !== "hardware"
+                ? html`<ha-button
+                    .appearance=${canAddDevice ? "filled" : "accent"}
+                    @click=${this._addIntegration}
+                  >
+                    ${this._manifest?.integration_type
+                      ? this.hass.localize(
+                          `ui.panel.config.integrations.integration_page.add_${this._manifest.integration_type}`
+                        )
+                      : this.hass.localize(
+                          `ui.panel.config.integrations.integration_page.add_entry`
+                        )}
+                  </ha-button>`
+                : nothing}
               ${Array.from(supportedSubentryTypes).map(
                 (flowType) =>
                   html`<ha-button
@@ -790,7 +790,10 @@ class HaConfigIntegrationPage extends SubscribeMixin(LitElement) {
     );
     const timeString = new Date().toISOString().replace(/:/g, "-");
     const logFileName = `home-assistant_${integration}_${timeString}.log`;
-    const signedUrl = await getSignedPath(this.hass, getErrorLogDownloadUrl);
+    const signedUrl = await getSignedPath(
+      this.hass,
+      getErrorLogDownloadUrl(this.hass)
+    );
     fileDownload(signedUrl.path, logFileName);
   }
 
@@ -912,13 +915,16 @@ class HaConfigIntegrationPage extends SubscribeMixin(LitElement) {
           max-width: 1000px;
           padding: 32px;
         }
+        :host([narrow]) .container {
+          padding: 16px;
+        }
         .container > * {
           flex-grow: 1;
         }
         .header {
           display: flex;
           flex-wrap: wrap;
-          gap: 24px;
+          gap: var(--ha-space-6);
           align-items: center;
           justify-content: space-between;
           margin-bottom: 24px;
@@ -929,7 +935,7 @@ class HaConfigIntegrationPage extends SubscribeMixin(LitElement) {
         }
         .title {
           display: flex;
-          gap: 4px;
+          gap: var(--ha-space-1);
           flex-direction: column;
           justify-content: space-between;
         }
@@ -951,9 +957,6 @@ class HaConfigIntegrationPage extends SubscribeMixin(LitElement) {
         }
         .card-content {
           padding: 16px 0 8px;
-        }
-        :host([narrow]) .container {
-          padding: 16px;
         }
         .card-header {
           padding-bottom: 0;
@@ -991,7 +994,7 @@ class HaConfigIntegrationPage extends SubscribeMixin(LitElement) {
         .actions {
           display: flex;
           flex-wrap: wrap;
-          gap: 8px;
+          gap: var(--ha-space-2);
         }
         .section {
           width: 100%;
@@ -1013,7 +1016,7 @@ class HaConfigIntegrationPage extends SubscribeMixin(LitElement) {
         .integration-info {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: var(--ha-space-2);
         }
         .integration-info ha-svg-icon {
           min-width: 24px;
@@ -1051,7 +1054,7 @@ class HaConfigIntegrationPage extends SubscribeMixin(LitElement) {
         }
         ha-md-list {
           border: 1px solid var(--divider-color);
-          border-radius: 8px;
+          border-radius: var(--ha-border-radius-md);
           padding: 0;
         }
         .discovered {

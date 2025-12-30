@@ -8,9 +8,13 @@ import "../../../../components/ha-yaml-editor";
 import type { HaYamlEditor } from "../../../../components/ha-yaml-editor";
 import type { Condition } from "../../../../data/automation";
 import { expandConditionWithShorthand } from "../../../../data/automation";
+import type { ConditionDescription } from "../../../../data/condition";
+import { COLLAPSIBLE_CONDITION_ELEMENTS } from "../../../../data/condition";
 import type { HomeAssistant } from "../../../../types";
 import "../ha-automation-editor-warning";
-import { editorStyles } from "../styles";
+import { editorStyles, indentStyle } from "../styles";
+import type { ConditionElement } from "./ha-automation-condition-row";
+import "./types/ha-automation-condition-platform";
 
 @customElement("ha-automation-condition-editor")
 export default class HaAutomationConditionEditor extends LitElement {
@@ -26,12 +30,19 @@ export default class HaAutomationConditionEditor extends LitElement {
 
   @property({ type: Boolean }) public narrow = false;
 
+  @property({ type: Boolean, attribute: "sidebar" }) public inSidebar = false;
+
   @property({ type: Boolean, reflect: true }) public selected = false;
 
   @property({ type: Boolean, attribute: "supported" }) public uiSupported =
     false;
 
+  @property({ attribute: false }) public description?: ConditionDescription;
+
   @query("ha-yaml-editor") public yamlEditor?: HaYamlEditor;
+
+  @query(COLLAPSIBLE_CONDITION_ELEMENTS.join(", "))
+  private _collapsibleElement?: ConditionElement;
 
   private _processedCondition = memoizeOne((condition) =>
     expandConditionWithShorthand(condition)
@@ -46,10 +57,12 @@ export default class HaAutomationConditionEditor extends LitElement {
         class=${classMap({
           "card-content": true,
           disabled:
-            this.disabled ||
-            (this.condition.enabled === false && !this.yamlMode),
+            !this.indent &&
+            (this.disabled ||
+              (this.condition.enabled === false && !this.yamlMode)),
           yaml: yamlMode,
           indent: this.indent,
+          card: !this.inSidebar,
         })}
       >
         ${yamlMode
@@ -74,16 +87,23 @@ export default class HaAutomationConditionEditor extends LitElement {
             `
           : html`
               <div @value-changed=${this._onUiChanged}>
-                ${dynamicElement(
-                  `ha-automation-condition-${condition.condition}`,
-                  {
-                    hass: this.hass,
-                    condition: condition,
-                    disabled: this.disabled,
-                    optionsInSidebar: this.indent,
-                    narrow: this.narrow,
-                  }
-                )}
+                ${this.description
+                  ? html`<ha-automation-condition-platform
+                      .hass=${this.hass}
+                      .condition=${this.condition}
+                      .description=${this.description}
+                      .disabled=${this.disabled}
+                    ></ha-automation-condition-platform>`
+                  : dynamicElement(
+                      `ha-automation-condition-${condition.condition}`,
+                      {
+                        hass: this.hass,
+                        condition: condition,
+                        disabled: this.disabled,
+                        optionsInSidebar: this.indent,
+                        narrow: this.narrow,
+                      }
+                    )}
               </div>
             `}
       </div>
@@ -95,8 +115,9 @@ export default class HaAutomationConditionEditor extends LitElement {
     if (!ev.detail.isValid) {
       return;
     }
-    // @ts-ignore
-    fireEvent(this, "value-changed", { value: ev.detail.value, yaml: true });
+    fireEvent(this, this.inSidebar ? "yaml-changed" : "value-changed", {
+      value: ev.detail.value,
+    });
   }
 
   private _onUiChanged(ev: CustomEvent) {
@@ -108,8 +129,17 @@ export default class HaAutomationConditionEditor extends LitElement {
     fireEvent(this, "value-changed", { value });
   }
 
+  public expandAll() {
+    this._collapsibleElement?.expandAll?.();
+  }
+
+  public collapseAll() {
+    this._collapsibleElement?.collapseAll?.();
+  }
+
   static styles = [
     editorStyles,
+    indentStyle,
     css`
       :host([action]) .card-content {
         padding: 0;
@@ -119,6 +149,7 @@ export default class HaAutomationConditionEditor extends LitElement {
         margin-right: 0;
         padding: 0;
         border-left: none;
+        border-bottom: none;
       }
     `,
   ];

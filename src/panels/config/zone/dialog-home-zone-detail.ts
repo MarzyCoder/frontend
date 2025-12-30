@@ -1,6 +1,6 @@
 import type { CSSResultGroup } from "lit";
 import { css, html, LitElement, nothing } from "lit";
-import { property, state } from "lit/decorators";
+import { customElement, property, state } from "lit/decorators";
 import memoizeOne from "memoize-one";
 import { fireEvent } from "../../../common/dom/fire_event";
 import { createCloseHeading } from "../../../components/ha-dialog";
@@ -19,6 +19,7 @@ const SCHEMA = [
   },
 ];
 
+@customElement("dialog-home-zone-detail")
 class DialogHomeZoneDetail extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
@@ -137,9 +138,8 @@ class DialogHomeZoneDetail extends LitElement {
         }
         @media all and (max-width: 450px), all and (max-height: 500px) {
           ha-dialog {
-            --mdc-dialog-min-width: calc(
-              100vw - var(--safe-area-inset-right) - var(--safe-area-inset-left)
-            );
+            --mdc-dialog-min-width: 100vw;
+            --mdc-dialog-max-width: 100vw;
           }
         }
       `,
@@ -152,5 +152,3 @@ declare global {
     "dialog-home-zone-detail": DialogHomeZoneDetail;
   }
 }
-
-customElements.define("dialog-home-zone-detail", DialogHomeZoneDetail);

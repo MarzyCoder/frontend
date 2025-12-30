@@ -1,15 +1,16 @@
 import { mdiClose, mdiDotsVertical } from "@mdi/js";
 import { css, html, LitElement, nothing } from "lit";
-import { customElement, property } from "lit/decorators";
+import { customElement, property, query } from "lit/decorators";
 import { classMap } from "lit/directives/class-map";
 import { fireEvent } from "../../../../common/dom/fire_event";
+import { preventDefaultStopPropagation } from "../../../../common/dom/prevent_default_stop_propagation";
 import { stopPropagation } from "../../../../common/dom/stop_propagation";
 import "../../../../components/ha-card";
 import "../../../../components/ha-dialog-header";
+import "../../../../components/ha-dropdown";
 import "../../../../components/ha-icon-button";
-import "../../../../components/ha-md-button-menu";
-import "../../../../components/ha-md-divider";
-import "../../../../components/ha-md-menu-item";
+import { ScrollableFadeMixin } from "../../../../mixins/scrollable-fade-mixin";
+import { haStyleScrollbar } from "../../../../resources/styles";
 import type { HomeAssistant } from "../../../../types";
 import "../ha-automation-editor-warning";
 
@@ -24,7 +25,9 @@ export interface SidebarOverflowMenuEntry {
 export type SidebarOverflowMenu = (SidebarOverflowMenuEntry | "separator")[];
 
 @customElement("ha-automation-sidebar-card")
-export default class HaAutomationSidebarCard extends LitElement {
+export default class HaAutomationSidebarCard extends ScrollableFadeMixin(
+  LitElement
+) {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
   @property({ type: Boolean, attribute: "wide" }) public isWide = false;
@@ -32,6 +35,18 @@ export default class HaAutomationSidebarCard extends LitElement {
   @property({ type: Boolean, attribute: "yaml-mode" }) public yamlMode = false;
 
   @property({ attribute: false }) public warnings?: string[];
+
+  @property({ attribute: false }) public handleDropdownSelect!: (
+    ev: CustomEvent
+  ) => void;
+
+  @property({ type: Boolean }) public narrow = false;
+
+  @query(".card-content") private _contentElement!: HTMLDivElement;
+
+  protected get scrollableElement(): HTMLElement | null {
+    return this._contentElement;
+  }
 
   protected render() {
     return html`
@@ -52,11 +67,10 @@ export default class HaAutomationSidebarCard extends LitElement {
           <slot slot="title" name="title"></slot>
           <slot slot="subtitle" name="subtitle"></slot>
           <slot name="overflow-menu" slot="actionItems">
-            <ha-md-button-menu
-              @click=${this._openOverflowMenu}
+            <ha-dropdown
+              @click=${preventDefaultStopPropagation}
               @keydown=${stopPropagation}
-              @closed=${stopPropagation}
-              positioning="fixed"
+              placement="bottom-end"
             >
               <ha-icon-button
                 slot="trigger"
@@ -64,7 +78,7 @@ export default class HaAutomationSidebarCard extends LitElement {
                 .path=${mdiDotsVertical}
               ></ha-icon-button>
               <slot name="menu-items"></slot>
-            </ha-md-button-menu>
+            </ha-dropdown>
           </slot>
         </ha-dialog-header>
         ${this.warnings
@@ -74,8 +88,9 @@ export default class HaAutomationSidebarCard extends LitElement {
             >
             </ha-automation-editor-warning>`
           : nothing}
-        <div class="card-content">
+        <div class="card-content ha-scrollbar">
           <slot></slot>
+          ${this.renderScrollableFades(this.isWide)}
         </div>
       </ha-card>
     `;
@@ -85,63 +100,63 @@ export default class HaAutomationSidebarCard extends LitElement {
     fireEvent(this, "close-sidebar");
   }
 
-  private _openOverflowMenu(ev: MouseEvent) {
-    ev.stopPropagation();
-    ev.preventDefault();
+  static get styles() {
+    return [
+      ...super.styles,
+      haStyleScrollbar,
+      css`
+        ha-card {
+          position: relative;
+          height: 100%;
+          width: 100%;
+          border-color: var(--primary-color);
+          border-width: 2px;
+          display: flex;
+          flex-direction: column;
+        }
+
+        @media all and (max-width: 870px) {
+          ha-card.mobile {
+            border: none;
+            box-shadow: none;
+          }
+          ha-card.mobile {
+            border-bottom-right-radius: var(--ha-border-radius-square);
+            border-bottom-left-radius: var(--ha-border-radius-square);
+          }
+        }
+
+        ha-dialog-header {
+          border-radius: var(--ha-card-border-radius);
+          border-bottom-left-radius: 0;
+          border-bottom-right-radius: 0;
+          position: relative;
+          background-color: var(
+            --ha-dialog-surface-background,
+            var(--mdc-theme-surface, #fff)
+          );
+        }
+
+        .card-content {
+          flex: 1 1 auto;
+          min-height: 0;
+          overflow: auto;
+          margin-top: 0;
+          padding-bottom: max(var(--safe-area-inset-bottom, 0px), 32px);
+        }
+
+        .fade-top {
+          top: var(--ha-space-17);
+        }
+
+        @media all and (max-width: 870px) {
+          .card-content {
+            padding-bottom: 42px;
+          }
+        }
+      `,
+    ];
   }
-
-  static styles = css`
-    ha-card {
-      height: 100%;
-      width: 100%;
-      border-color: var(--primary-color);
-      border-width: 2px;
-      display: block;
-    }
-    ha-card.mobile {
-      border-bottom-right-radius: var(--ha-border-radius-square);
-      border-bottom-left-radius: var(--ha-border-radius-square);
-    }
-
-    @media all and (max-width: 870px) {
-      ha-card.mobile {
-        max-height: 70vh;
-        max-height: 70dvh;
-        border-width: 2px 2px 0;
-      }
-      ha-card.mobile.yaml {
-        height: 70vh;
-        height: 70dvh;
-      }
-    }
-
-    ha-dialog-header {
-      border-radius: var(--ha-card-border-radius);
-    }
-
-    .card-content {
-      max-height: calc(100% - 80px);
-      overflow: auto;
-    }
-
-    @media (min-width: 450px) and (min-height: 500px) {
-      .card-content {
-        max-height: calc(100% - 104px);
-        overflow: auto;
-      }
-    }
-
-    @media all and (max-width: 870px) {
-      ha-card.mobile .card-content {
-        max-height: calc(
-          70vh - 88px - max(var(--safe-area-inset-bottom), 16px)
-        );
-        max-height: calc(
-          70dvh - 88px - max(var(--safe-area-inset-bottom), 16px)
-        );
-      }
-    }
-  `;
 }
 
 declare global {

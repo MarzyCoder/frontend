@@ -1,9 +1,16 @@
+import { ContextProvider } from "@lit/context";
 import { mdiContentSave, mdiHelpCircle } from "@mdi/js";
-import type { HassEntity } from "home-assistant-js-websocket";
+import type { HassEntity, UnsubscribeFunc } from "home-assistant-js-websocket";
 import { load } from "js-yaml";
-import type { CSSResultGroup } from "lit";
+import type { CSSResultGroup, PropertyValues } from "lit";
 import { css, html, LitElement, nothing } from "lit";
-import { customElement, property, state } from "lit/decorators";
+import {
+  customElement,
+  property,
+  query,
+  queryAll,
+  state,
+} from "lit/decorators";
 import { classMap } from "lit/directives/class-map";
 import {
   any,
@@ -16,8 +23,14 @@ import {
   union,
 } from "superstruct";
 import { ensureArray } from "../../../common/array/ensure-array";
+import { storage } from "../../../common/decorators/storage";
 import { canOverrideAlphanumericInput } from "../../../common/dom/can-override-input";
 import { fireEvent } from "../../../common/dom/fire_event";
+import { constructUrlCurrentPath } from "../../../common/url/construct-url";
+import {
+  extractSearchParam,
+  removeSearchParam,
+} from "../../../common/url/search-params";
 import "../../../components/ha-button";
 import "../../../components/ha-fab";
 import "../../../components/ha-icon-button";
@@ -34,15 +47,24 @@ import {
   isTrigger,
   normalizeAutomationConfig,
 } from "../../../data/automation";
+import {
+  subscribeAndProcessConfigEntries,
+  type ConfigEntry,
+} from "../../../data/config_entries";
+import { configEntriesContext } from "../../../data/context";
 import { getActionType, type Action } from "../../../data/script";
+import { SubscribeMixin } from "../../../mixins/subscribe-mixin";
 import type { HomeAssistant } from "../../../types";
 import { documentationUrl } from "../../../util/documentation-url";
 import { showToast } from "../../../util/toast";
 import "./action/ha-automation-action";
+import type HaAutomationAction from "./action/ha-automation-action";
 import "./condition/ha-automation-condition";
+import type HaAutomationCondition from "./condition/ha-automation-condition";
 import "./ha-automation-sidebar";
+import type HaAutomationSidebar from "./ha-automation-sidebar";
 import { showPasteReplaceDialog } from "./paste-replace-dialog/show-dialog-paste-replace";
-import { saveFabStyles } from "./styles";
+import { manualEditorStyles, saveFabStyles } from "./styles";
 import "./trigger/ha-automation-trigger";
 
 const baseConfigStruct = object({
@@ -62,8 +84,10 @@ const automationConfigStruct = union([
   assign(baseConfigStruct, object({ actions: array(any()) })),
 ]);
 
+export const SIDEBAR_DEFAULT_WIDTH = 500;
+
 @customElement("manual-automation-editor")
-export class HaManualAutomationEditor extends LitElement {
+export class HaManualAutomationEditor extends SubscribeMixin(LitElement) {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
   @property({ attribute: "is-wide", type: Boolean }) public isWide = false;
@@ -84,11 +108,44 @@ export class HaManualAutomationEditor extends LitElement {
 
   @state() private _sidebarConfig?: SidebarConfig;
 
-  private _previousConfig?: ManualAutomationConfig;
+  @state() private _sidebarKey = 0;
+
+  @storage({
+    key: "automation-sidebar-width",
+    state: false,
+    subscribe: false,
+  })
+  private _sidebarWidthPx = SIDEBAR_DEFAULT_WIDTH;
+
+  @query("ha-automation-sidebar") private _sidebarElement?: HaAutomationSidebar;
+
+  @queryAll("ha-automation-action, ha-automation-condition")
+  private _collapsableElements?: NodeListOf<
+    HaAutomationAction | HaAutomationCondition
+  >;
+
+  private _configEntries = new ContextProvider(this, {
+    context: configEntriesContext,
+    initialValue: [],
+  });
+
+  private _prevSidebarWidthPx?: number;
 
   public connectedCallback() {
     super.connectedCallback();
     window.addEventListener("paste", this._handlePaste);
+  }
+
+  public hassSubscribe(): Promise<UnsubscribeFunc>[] {
+    return [
+      subscribeAndProcessConfigEntries(
+        this.hass,
+        (message: ConfigEntry[]) => {
+          this._configEntries.setValue(message);
+        },
+        undefined
+      ),
+    ];
   }
 
   public disconnectedCallback() {
@@ -98,20 +155,6 @@ export class HaManualAutomationEditor extends LitElement {
 
   private _renderContent() {
     return html`
-      ${this.stateObj?.state === "off"
-        ? html`
-            <ha-alert alert-type="info">
-              ${this.hass.localize(
-                "ui.panel.config.automation.editor.disabled"
-              )}
-              <ha-button size="small" slot="action" @click=${this._enable}>
-                ${this.hass.localize(
-                  "ui.panel.config.automation.editor.enable"
-                )}
-              </ha-button>
-            </ha-alert>
-          `
-        : nothing}
       ${this.config.description
         ? html`<ha-markdown
             class="description"
@@ -150,12 +193,13 @@ export class HaManualAutomationEditor extends LitElement {
         role="region"
         aria-labelledby="triggers-heading"
         .triggers=${this.config.triggers || []}
-        .highlightedTriggers=${this._pastedConfig?.triggers || []}
+        .highlightedTriggers=${this._pastedConfig?.triggers}
         @value-changed=${this._triggerChanged}
         .hass=${this.hass}
         .disabled=${this.disabled || this.saving}
         .narrow=${this.narrow}
         @open-sidebar=${this._openSidebar}
+        @request-close-sidebar=${this.triggerCloseSidebar}
         @close-sidebar=${this._handleCloseSidebar}
         root
         sidebar
@@ -196,12 +240,13 @@ export class HaManualAutomationEditor extends LitElement {
         role="region"
         aria-labelledby="conditions-heading"
         .conditions=${this.config.conditions || []}
-        .highlightedConditions=${this._pastedConfig?.conditions || []}
+        .highlightedConditions=${this._pastedConfig?.conditions}
         @value-changed=${this._conditionChanged}
         .hass=${this.hass}
         .disabled=${this.disabled || this.saving}
         .narrow=${this.narrow}
         @open-sidebar=${this._openSidebar}
+        @request-close-sidebar=${this.triggerCloseSidebar}
         @close-sidebar=${this._handleCloseSidebar}
         root
         sidebar
@@ -240,9 +285,10 @@ export class HaManualAutomationEditor extends LitElement {
         role="region"
         aria-labelledby="actions-heading"
         .actions=${this.config.actions || []}
-        .highlightedActions=${this._pastedConfig?.actions || []}
+        .highlightedActions=${this._pastedConfig?.actions}
         @value-changed=${this._actionChanged}
         @open-sidebar=${this._openSidebar}
+        @request-close-sidebar=${this.triggerCloseSidebar}
         @close-sidebar=${this._handleCloseSidebar}
         .hass=${this.hass}
         .narrow=${this.narrow}
@@ -255,40 +301,86 @@ export class HaManualAutomationEditor extends LitElement {
 
   protected render() {
     return html`
-      <div class="split-view">
+      <div
+        class=${classMap({
+          "has-sidebar": this._sidebarConfig && !this.narrow,
+        })}
+      >
         <div class="content-wrapper">
-          <div class="content">${this._renderContent()}</div>
-          <ha-fab
-            slot="fab"
-            class=${this.dirty ? "dirty" : ""}
-            .label=${this.hass.localize("ui.common.save")}
-            .disabled=${this.saving}
-            extended
-            @click=${this._saveAutomation}
+          <div
+            class="content ${this._sidebarConfig && this.narrow
+              ? "has-bottom-sheet"
+              : ""}"
           >
-            <ha-svg-icon slot="icon" .path=${mdiContentSave}></ha-svg-icon>
-          </ha-fab>
+            <slot name="alerts"></slot>
+            ${this._renderContent()}
+          </div>
+          <div class="fab-positioner">
+            <ha-fab
+              slot="fab"
+              class=${this.dirty ? "dirty" : ""}
+              .label=${this.hass.localize("ui.common.save")}
+              .disabled=${this.saving}
+              extended
+              @click=${this._saveAutomation}
+            >
+              <ha-svg-icon slot="icon" .path=${mdiContentSave}></ha-svg-icon>
+            </ha-fab>
+          </div>
         </div>
-        <ha-automation-sidebar
-          class=${classMap({
-            sidebar: true,
-            hidden: !this._sidebarConfig,
-            overlay: !this.isWide,
-          })}
-          .isWide=${this.isWide}
-          .hass=${this.hass}
-          .config=${this._sidebarConfig}
-          @value-changed=${this._sidebarConfigChanged}
-          .disabled=${this.disabled}
-        ></ha-automation-sidebar>
+        <div class="sidebar-positioner">
+          <ha-automation-sidebar
+            tabindex="-1"
+            class=${classMap({ hidden: !this._sidebarConfig })}
+            .isWide=${this.isWide}
+            .hass=${this.hass}
+            .narrow=${this.narrow}
+            .config=${this._sidebarConfig}
+            .disabled=${this.disabled}
+            .sidebarKey=${this._sidebarKey}
+            @value-changed=${this._sidebarConfigChanged}
+            @sidebar-resized=${this._resizeSidebar}
+            @sidebar-resizing-stopped=${this._stopResizeSidebar}
+            @sidebar-reset-size=${this._resetSidebarWidth}
+          ></ha-automation-sidebar>
+        </div>
       </div>
     `;
   }
 
-  private _openSidebar(ev: CustomEvent<SidebarConfig>) {
+  protected firstUpdated(changedProps: PropertyValues): void {
+    super.firstUpdated(changedProps);
+
+    this.style.setProperty(
+      "--sidebar-dynamic-width",
+      `${this._sidebarWidthPx}px`
+    );
+
+    const expanded = extractSearchParam("expanded");
+    if (expanded === "1") {
+      this._clearParam("expanded");
+      this.expandAll();
+    }
+  }
+
+  private _clearParam(param: string) {
+    window.history.replaceState(
+      null,
+      "",
+      constructUrlCurrentPath(removeSearchParam(param))
+    );
+  }
+
+  private async _openSidebar(ev: CustomEvent<SidebarConfig>) {
     // deselect previous selected row
     this._sidebarConfig?.close?.();
     this._sidebarConfig = ev.detail;
+
+    // be sure the sidebar editor is recreated
+    this._sidebarKey++;
+
+    await this._sidebarElement?.updateComplete;
+    this._sidebarElement?.focus();
   }
 
   private _sidebarConfigChanged(ev: CustomEvent<{ value: SidebarConfig }>) {
@@ -303,11 +395,14 @@ export class HaManualAutomationEditor extends LitElement {
     };
   }
 
-  private _closeSidebar() {
+  public triggerCloseSidebar() {
     if (this._sidebarConfig) {
-      const closeRow = this._sidebarConfig?.close;
-      this._sidebarConfig = undefined;
-      closeRow?.();
+      if (this._sidebarElement) {
+        this._sidebarElement.triggerCloseSidebar();
+        return;
+      }
+      this._sidebarConfig?.close();
+      this._sidebarKey = 0;
     }
   }
 
@@ -342,17 +437,8 @@ export class HaManualAutomationEditor extends LitElement {
     });
   }
 
-  private async _enable(): Promise<void> {
-    if (!this.hass || !this.stateObj) {
-      return;
-    }
-    await this.hass.callService("automation", "turn_on", {
-      entity_id: this.stateObj.entity_id,
-    });
-  }
-
   private _saveAutomation() {
-    this._closeSidebar();
+    this.triggerCloseSidebar();
     fireEvent(this, "save-automation");
   }
 
@@ -457,7 +543,28 @@ export class HaManualAutomationEditor extends LitElement {
     if (normalized) {
       ev.preventDefault();
 
-      if (this.dirty) {
+      const keysPresent = Object.keys(normalized).filter(
+        (key) => ensureArray(normalized[key]).length
+      );
+
+      if (
+        keysPresent.length === 1 &&
+        ["triggers", "conditions", "actions"].includes(keysPresent[0])
+      ) {
+        // if only one type of element is pasted, insert under the currently active item
+        if (this._tryInsertAfterSelected(normalized[keysPresent[0]])) {
+          this._showPastedToastWithUndo();
+          return;
+        }
+      }
+
+      if (
+        this.dirty ||
+        ensureArray(this.config.triggers)?.length ||
+        ensureArray(this.config.conditions)?.length ||
+        ensureArray(this.config.actions)?.length
+      ) {
+        // ask if they want to append or replace if we have existing config or there are unsaved changes
         const result = await new Promise<boolean>((resolve) => {
           showPasteReplaceDialog(this, {
             domain: "automation",
@@ -482,26 +589,27 @@ export class HaManualAutomationEditor extends LitElement {
   };
 
   private _appendToExistingConfig(config: ManualAutomationConfig) {
-    // make a copy otherwise we will reference the original config
-    this._previousConfig = { ...this.config } as ManualAutomationConfig;
     this._pastedConfig = config;
+    // make a copy otherwise we will modify the original config
+    // which breaks the (referenced) config used for storing in undo stack
+    const workingCopy: ManualAutomationConfig = { ...this.config };
 
-    if (!this.config) {
+    if (!workingCopy) {
       return;
     }
 
     if ("triggers" in config) {
-      this.config.triggers = ensureArray(this.config.triggers || []).concat(
+      workingCopy.triggers = ensureArray(workingCopy.triggers || []).concat(
         ensureArray(config.triggers)
       );
     }
     if ("conditions" in config) {
-      this.config.conditions = ensureArray(this.config.conditions || []).concat(
+      workingCopy.conditions = ensureArray(workingCopy.conditions || []).concat(
         ensureArray(config.conditions)
       );
     }
     if ("actions" in config) {
-      this.config.actions = ensureArray(this.config.actions || []).concat(
+      workingCopy.actions = ensureArray(workingCopy.actions || []).concat(
         ensureArray(config.actions)
       ) as Action[];
     }
@@ -510,22 +618,19 @@ export class HaManualAutomationEditor extends LitElement {
 
     fireEvent(this, "value-changed", {
       value: {
-        ...this.config!,
+        ...workingCopy!,
       },
     });
   }
 
   private _replaceExistingConfig(config: ManualAutomationConfig) {
-    // make a copy otherwise we will reference the original config
-    this._previousConfig = { ...this.config } as ManualAutomationConfig;
     this._pastedConfig = config;
-    this.config = config;
 
     this._showPastedToastWithUndo();
 
     fireEvent(this, "value-changed", {
       value: {
-        ...this.config,
+        ...config,
       },
     });
   }
@@ -539,13 +644,8 @@ export class HaManualAutomationEditor extends LitElement {
       action: {
         text: this.hass.localize("ui.common.undo"),
         action: () => {
-          fireEvent(this, "value-changed", {
-            value: {
-              ...this._previousConfig!,
-            },
-          });
+          fireEvent(this, "undo-change");
 
-          this._previousConfig = undefined;
           this._pastedConfig = undefined;
         },
       },
@@ -553,12 +653,7 @@ export class HaManualAutomationEditor extends LitElement {
   }
 
   public resetPastedConfig() {
-    if (!this._previousConfig) {
-      return;
-    }
-
     this._pastedConfig = undefined;
-    this._previousConfig = undefined;
 
     showToast(this, {
       message: "",
@@ -566,82 +661,85 @@ export class HaManualAutomationEditor extends LitElement {
     });
   }
 
+  public expandAll() {
+    this._collapsableElements?.forEach((element) => {
+      element.expandAll();
+    });
+  }
+
+  public collapseAll() {
+    this._collapsableElements?.forEach((element) => {
+      element.collapseAll();
+    });
+  }
+
+  private _tryInsertAfterSelected(
+    config: Trigger | Condition | Action | Trigger[] | Condition[] | Action[]
+  ): boolean {
+    if (this._sidebarConfig && "insertAfter" in this._sidebarConfig) {
+      return this._sidebarConfig.insertAfter(config as any);
+    }
+    return false;
+  }
+
+  public copySelectedRow() {
+    if (this._sidebarConfig && "copy" in this._sidebarConfig) {
+      this._sidebarConfig.copy();
+    }
+  }
+
+  public cutSelectedRow() {
+    if (this._sidebarConfig && "cut" in this._sidebarConfig) {
+      this._sidebarConfig.cut();
+    }
+  }
+
+  public deleteSelectedRow() {
+    if (this._sidebarConfig && "delete" in this._sidebarConfig) {
+      this._sidebarConfig.delete();
+    }
+  }
+
+  private _resizeSidebar(ev) {
+    ev.stopPropagation();
+    const delta = ev.detail.deltaInPx as number;
+
+    // set initial resize width to add / reduce delta from it
+    if (!this._prevSidebarWidthPx) {
+      this._prevSidebarWidthPx =
+        this._sidebarElement?.clientWidth || SIDEBAR_DEFAULT_WIDTH;
+    }
+
+    const widthPx = delta + this._prevSidebarWidthPx;
+
+    this._sidebarWidthPx = widthPx;
+
+    this.style.setProperty(
+      "--sidebar-dynamic-width",
+      `${this._sidebarWidthPx}px`
+    );
+  }
+
+  private _stopResizeSidebar(ev) {
+    ev.stopPropagation();
+    this._prevSidebarWidthPx = undefined;
+  }
+
+  private _resetSidebarWidth(ev: Event) {
+    ev.stopPropagation();
+    this._prevSidebarWidthPx = undefined;
+    this._sidebarWidthPx = SIDEBAR_DEFAULT_WIDTH;
+    this.style.setProperty(
+      "--sidebar-dynamic-width",
+      `${this._sidebarWidthPx}px`
+    );
+  }
+
   static get styles(): CSSResultGroup {
     return [
       saveFabStyles,
+      manualEditorStyles,
       css`
-        :host {
-          display: block;
-        }
-
-        .split-view {
-          display: flex;
-          flex-direction: row;
-          height: 100%;
-          position: relative;
-          gap: 16px;
-        }
-
-        .content-wrapper {
-          position: relative;
-          flex: 6;
-        }
-
-        .content {
-          padding: 32px 16px 64px 0;
-          height: calc(100vh - 153px);
-          height: calc(100dvh - 153px);
-          overflow-y: auto;
-          overflow-x: hidden;
-        }
-
-        .sidebar {
-          padding: 12px 0;
-          flex: 4;
-          height: calc(100vh - 81px);
-          height: calc(100dvh - 81px);
-          width: 40%;
-        }
-        .sidebar.hidden {
-          border-color: transparent;
-          border-width: 0;
-          overflow: hidden;
-          flex: 0;
-          visibility: hidden;
-        }
-
-        .sidebar.overlay {
-          position: fixed;
-          bottom: 0;
-          right: 0;
-          height: calc(100% - 64px);
-          padding: 0;
-          z-index: 5;
-        }
-
-        @media all and (max-width: 870px) {
-          .sidebar.overlay {
-            max-height: 70vh;
-            max-height: 70dvh;
-            height: auto;
-            width: 100%;
-            box-shadow: 0px -8px 16px rgba(0, 0, 0, 0.2);
-          }
-        }
-
-        @media all and (max-width: 870px) {
-          .sidebar.overlay.hidden {
-            height: 0;
-          }
-        }
-
-        .sidebar.overlay.hidden {
-          width: 0;
-        }
-
-        .description {
-          margin: 0;
-        }
         p {
           margin-top: 0;
         }
@@ -657,10 +755,7 @@ export class HaManualAutomationEditor extends LitElement {
         .header .name {
           font-weight: var(--ha-font-weight-normal);
           flex: 1;
-          margin-bottom: 16px;
-        }
-        .header a {
-          color: var(--secondary-text-color);
+          margin-bottom: 8px;
         }
         .header .small {
           font-size: small;
@@ -668,9 +763,8 @@ export class HaManualAutomationEditor extends LitElement {
           line-height: 0;
         }
 
-        ha-alert {
-          display: block;
-          margin-bottom: 16px;
+        .description {
+          margin-top: 16px;
         }
       `,
     ];
@@ -684,6 +778,7 @@ declare global {
 
   interface HASSDomEvents {
     "open-sidebar": SidebarConfig;
+    "request-close-sidebar": undefined;
     "close-sidebar": undefined;
   }
 }

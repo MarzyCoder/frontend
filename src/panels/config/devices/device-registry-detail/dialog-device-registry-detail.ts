@@ -5,12 +5,12 @@ import { fireEvent } from "../../../../common/dom/fire_event";
 import { computeDeviceNameDisplay } from "../../../../common/entity/compute_device_name";
 import "../../../../components/ha-alert";
 import "../../../../components/ha-area-picker";
-import "../../../../components/ha-dialog";
 import "../../../../components/ha-button";
+import "../../../../components/ha-dialog";
 import "../../../../components/ha-labels-picker";
 import type { HaSwitch } from "../../../../components/ha-switch";
 import "../../../../components/ha-textfield";
-import type { DeviceRegistryEntry } from "../../../../data/device_registry";
+import type { DeviceRegistryEntry } from "../../../../data/device/device_registry";
 import { haStyle, haStyleDialog } from "../../../../resources/styles";
 import type { HomeAssistant } from "../../../../types";
 import type { DeviceRegistryDetailDialogParams } from "./show-dialog-device-registry-detail";
@@ -132,7 +132,7 @@ class DialogDeviceRegistryDetail extends LitElement {
           </div>
         </div>
         <ha-button
-          slot="primaryAction"
+          slot="secondaryAction"
           @click=${this.closeDialog}
           .disabled=${this._submitting}
           appearance="plain"

@@ -251,23 +251,19 @@ export class DeveloperYamlConfig extends LitElement {
         }
 
         .content {
-          padding: 28px 20px 16px;
-          padding: max(28px, calc(12px + var(--safe-area-inset-top)))
-            max(20px, calc(4px + var(--safe-area-inset-right)))
-            max(16px, var(--safe-area-inset-bottom))
-            max(20px, calc(4px + var(--safe-area-inset-left)));
+          padding: var(--ha-space-7) var(--ha-space-5) var(--ha-space-4);
           max-width: 1040px;
           margin: 0 auto;
         }
 
         ha-card {
-          margin-top: 24px;
+          margin-top: var(--ha-space-6);
         }
 
         .card-actions {
           display: flex;
           justify-content: space-between;
-          padding: 4px;
+          padding: var(--ha-space-1);
         }
       `,
     ];

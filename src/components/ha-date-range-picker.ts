@@ -2,7 +2,7 @@ import type { ActionDetail } from "@material/mwc-list/mwc-list-foundation";
 
 import { mdiCalendar } from "@mdi/js";
 import { isThisYear } from "date-fns";
-import { fromZonedTime, toZonedTime } from "date-fns-tz";
+import { TZDate } from "@date-fns/tz";
 import type { PropertyValues, TemplateResult } from "lit";
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators";
@@ -74,6 +74,9 @@ export class HaDateRangePicker extends LitElement {
   @property({ attribute: "extended-presets", type: Boolean })
   public extendedPresets = false;
 
+  @property({ attribute: "vertical-opening-direction" })
+  public verticalOpeningDirection?: "up" | "down";
+
   @property({ attribute: false }) public openingDirection?:
     | "right"
     | "left"
@@ -127,6 +130,7 @@ export class HaDateRangePicker extends LitElement {
         opening-direction=${ifDefined(
           this.openingDirection || this._calcedOpeningDirection
         )}
+        opens-vertical=${ifDefined(this.verticalOpeningDirection)}
         first-day=${firstWeekdayIndex(this.hass.locale)}
         language=${this.hass.locale.language}
         @change=${this._handleChange}
@@ -275,8 +279,8 @@ export class HaDateRangePicker extends LitElement {
     }
 
     if (this.hass.locale.time_zone === TimeZone.server) {
-      start = fromZonedTime(start, this.hass.config.time_zone);
-      end = fromZonedTime(end, this.hass.config.time_zone);
+      start = new Date(new TZDate(start, this.hass.config.time_zone).getTime());
+      end = new Date(new TZDate(end, this.hass.config.time_zone).getTime());
     }
 
     if (
@@ -290,7 +294,7 @@ export class HaDateRangePicker extends LitElement {
 
   private _formatDate(date: Date): string {
     if (this.hass.locale.time_zone === TimeZone.server) {
-      return toZonedTime(date, this.hass.config.time_zone).toISOString();
+      return new TZDate(date, this.hass.config.time_zone).toISOString();
     }
     return date.toISOString();
   }
@@ -343,7 +347,7 @@ export class HaDateRangePicker extends LitElement {
     .date-range-inputs {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: var(--ha-space-2);
     }
 
     .date-range-ranges {

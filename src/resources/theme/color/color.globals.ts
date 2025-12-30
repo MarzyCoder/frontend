@@ -20,6 +20,7 @@ export const colorStyles = css`
     --divider-color: rgba(0, 0, 0, 0.12);
     --outline-color: rgba(0, 0, 0, 0.12);
     --outline-hover-color: rgba(0, 0, 0, 0.24);
+    --shadow-color: rgba(0, 0, 0, 0.16);
 
     /* rgb */
     --rgb-primary-color: 0, 154, 199;
@@ -91,6 +92,62 @@ export const colorStyles = css`
     --black-color: #000000;
     --white-color: #ffffff;
 
+    /* colors - used for graphs, calendars, maps, etc */
+    --color-1: #4269d0;
+    --color-2: #f4bd4a;
+    --color-3: #ff725c;
+    --color-4: #6cc5b0;
+    --color-5: #a463f2;
+    --color-6: #ff8ab7;
+    --color-7: #9c6b4e;
+    --color-8: #97bbf5;
+    --color-9: #01ab63;
+    --color-10: #094bad;
+    --color-11: #c99000;
+    --color-12: #d84f3e;
+    --color-13: #49a28f;
+    --color-14: #048732;
+    --color-15: #d96895;
+    --color-16: #8043ce;
+    --color-17: #7599d1;
+    --color-18: #7a4c31;
+    --color-19: #6989f4;
+    --color-20: #ffd444;
+    --color-21: #ff957c;
+    --color-22: #8fe9d3;
+    --color-23: #62cc71;
+    --color-24: #ffadda;
+    --color-25: #c884ff;
+    --color-26: #badeff;
+    --color-27: #bf8b6d;
+    --color-28: #927acc;
+    --color-29: #97ee3f;
+    --color-30: #bf3947;
+    --color-31: #9f5b00;
+    --color-32: #f48758;
+    --color-33: #8caed6;
+    --color-34: #f2b94f;
+    --color-35: #eff26e;
+    --color-36: #e43872;
+    --color-37: #d9b100;
+    --color-38: #9d7a00;
+    --color-39: #698cff;
+    --color-40: #00d27e;
+    --color-41: #d06800;
+    --color-42: #009f82;
+    --color-43: #c49200;
+    --color-44: #cbe8ff;
+    --color-45: #fecddf;
+    --color-46: #c27eb6;
+    --color-47: #8cd2ce;
+    --color-48: #c4b8d9;
+    --color-49: #f883b0;
+    --color-50: #a49100;
+    --color-51: #f48800;
+    --color-52: #27d0df;
+    --color-53: #a04a9b;
+    --color-54: #4269d0;
+
     /* history colors */
     --history-unavailable-color: transparent;
 
@@ -117,10 +174,7 @@ export const colorStyles = css`
     /* state color */
     --state-active-color: var(--amber-color);
     --state-inactive-color: var(--grey-color);
-    --state-unavailable-color: var(
-      --state-icon-unavailable-color,
-      var(--disabled-text-color)
-    );
+    --state-unavailable-color: var(--state-icon-unavailable-color, var(--disabled-text-color));
 
     /* state domain colors */
     --state-alarm_control_panel-armed_away-color: var(--green-color);
@@ -187,6 +241,21 @@ export const colorStyles = css`
     --state-water_heater-heat_pump-color: var(--orange-color);
     --state-water_heater-high_demand-color: var(--deep-orange-color);
     --state-water_heater-performance-color: var(--deep-orange-color);
+    --state-weather-clear_night-color: var(--deep-purple-color);
+    --state-weather-cloudy-color: var(--light-grey-color);
+    --state-weather-exceptional-color: var(--red-color);
+    --state-weather-fog-color: var(--grey-color);
+    --state-weather-hail-color: var(--cyan-color);
+    --state-weather-lightning_rainy-color: var(--lime-color);
+    --state-weather-lightning-color: var(--yellow-color);
+    --state-weather-partlycloudy-color: var(--blue-grey-color);
+    --state-weather-pouring-color: var(--indigo-color);
+    --state-weather-rainy-color: var(--blue-color);
+    --state-weather-snowy_rainy-color: var(--light-blue-color);
+    --state-weather-snowy-color: #c0e0ff;
+    --state-weather-sunny-color: var(--amber-color);
+    --state-weather-windy_variant-color: var(--green-color);
+    --state-weather-windy-color: var(--green-color);
 
     /* history colors */
     --history-unknown-color: var(--dark-grey-color);
@@ -198,15 +267,9 @@ export const colorStyles = css`
     --sidebar-selected-icon-color: var(--primary-color);
     --sidebar-icon-color: rgba(var(--rgb-primary-text-color), 0.6);
     --switch-checked-color: var(--primary-color);
-    --switch-checked-button-color: var(
-      --switch-checked-color,
-      var(--primary-background-color)
-    );
+    --switch-checked-button-color: var(--switch-checked-color, var(--primary-background-color));
     --switch-checked-track-color: var(--switch-checked-color, #000000);
-    --switch-unchecked-button-color: var(
-      --switch-unchecked-color,
-      var(--primary-background-color)
-    );
+    --switch-unchecked-button-color: var(--switch-unchecked-color, var(--primary-background-color));
     --switch-unchecked-track-color: var(--switch-unchecked-color, #000000);
     --slider-color: var(--primary-color);
     --slider-secondary-color: var(--light-primary-color);
@@ -218,6 +281,7 @@ export const colorStyles = css`
     --table-row-alternative-background-color: var(--secondary-background-color);
     --data-table-background-color: var(--card-background-color);
     --markdown-code-background-color: var(--primary-background-color);
+    --bar-box-shadow: 0 2px 12px var(--shadow-color);
 
     /* https://github.com/material-components/material-web/blob/master/docs/theming.md */
     --mdc-theme-primary: var(--primary-color);
@@ -246,19 +310,14 @@ export const colorStyles = css`
     --mdc-dialog-scroll-divider-color: var(--divider-color);
     --mdc-dialog-heading-ink-color: var(--primary-text-color);
     --mdc-dialog-content-ink-color: var(--primary-text-color);
+    --mdc-top-app-bar-fixed-box-shadow: var(--bar-box-shadow);
 
     --mdc-text-field-idle-line-color: var(--input-idle-line-color);
     --mdc-text-field-hover-line-color: var(--input-hover-line-color);
     --mdc-text-field-disabled-line-color: var(--input-disabled-line-color);
-    --mdc-text-field-outlined-idle-border-color: var(
-      --input-outlined-idle-border-color
-    );
-    --mdc-text-field-outlined-hover-border-color: var(
-      --input-outlined-hover-border-color
-    );
-    --mdc-text-field-outlined-disabled-border-color: var(
-      --input-outlined-disabled-border-color
-    );
+    --mdc-text-field-outlined-idle-border-color: var(--input-outlined-idle-border-color);
+    --mdc-text-field-outlined-hover-border-color: var(--input-outlined-hover-border-color);
+    --mdc-text-field-outlined-disabled-border-color: var(--input-outlined-disabled-border-color);
     --mdc-text-field-fill-color: var(--input-fill-color);
     --mdc-text-field-disabled-fill-color: var(--input-disabled-fill-color);
     --mdc-text-field-ink-color: var(--input-ink-color);
@@ -267,15 +326,9 @@ export const colorStyles = css`
 
     --mdc-select-idle-line-color: var(--input-idle-line-color);
     --mdc-select-hover-line-color: var(--input-hover-line-color);
-    --mdc-select-outlined-idle-border-color: var(
-      --input-outlined-idle-border-color
-    );
-    --mdc-select-outlined-hover-border-color: var(
-      --input-outlined-hover-border-color
-    );
-    --mdc-select-outlined-disabled-border-color: var(
-      --input-outlined-disabled-border-color
-    );
+    --mdc-select-outlined-idle-border-color: var(--input-outlined-idle-border-color);
+    --mdc-select-outlined-hover-border-color: var(--input-outlined-hover-border-color);
+    --mdc-select-outlined-disabled-border-color: var(--input-outlined-disabled-border-color);
     --mdc-select-fill-color: var(--input-fill-color);
     --mdc-select-disabled-fill-color: var(--input-disabled-fill-color);
     --mdc-select-ink-color: var(--input-ink-color);
@@ -283,21 +336,9 @@ export const colorStyles = css`
     --mdc-select-disabled-ink-color: var(--input-disabled-ink-color);
     --mdc-select-dropdown-icon-color: var(--input-dropdown-icon-color);
     --mdc-select-disabled-dropdown-icon-color: var(--input-disabled-ink-color);
-    --ha-assist-chip-filled-container-color: rgba(
-      var(--rgb-primary-text-color),
-      0.15
-    );
-    --ha-assist-chip-active-container-color: rgba(
-      var(--rgb-primary-color),
-      0.15
-    );
+    --ha-assist-chip-filled-container-color: rgba(var(--rgb-primary-text-color), 0.15);
+    --ha-assist-chip-active-container-color: rgba(var(--rgb-primary-color), 0.15);
     --chip-background-color: rgba(var(--rgb-primary-text-color), 0.15);
-
-    /* Vaadin */
-    --material-body-text-color: var(--primary-text-color);
-    --material-background-color: var(--card-background-color);
-    --material-secondary-background-color: var(--secondary-background-color);
-    --material-secondary-text-color: var(--secondary-text-color);
   }
 `;
 
@@ -317,6 +358,8 @@ export const darkColorStyles = css`
     --divider-color: rgba(225, 225, 225, 0.12);
     --outline-color: rgba(225, 225, 225, 0.12);
     --outline-hover-color: rgba(225, 225, 225, 0.24);
+    --shadow-color: rgba(0, 0, 0, 0.48);
+
     --mdc-ripple-color: #aaaaaa;
     --mdc-linear-progress-buffer-color: rgba(255, 255, 255, 0.1);
 
@@ -352,20 +395,17 @@ export const darkColorStyles = css`
     --codemirror-qualifier: #decb6b;
     --codemirror-type: #decb6b;
     --energy-grid-return-color: #a280db;
-    --map-filter: invert(0.9) hue-rotate(170deg) brightness(1.5) contrast(1.2)
-      saturate(0.3);
+    --map-filter: invert(0.9) hue-rotate(170deg) brightness(1.5) contrast(1.2) saturate(0.3);
     --disabled-color: #464646;
 
     --ha-button-primary-light-color: #4082a040;
     --ha-button-warning-light-color: #917b54c1;
     --ha-button-neutral-color: #d9dae0;
     --ha-button-neutral-light-color: #6a7081;
+
+    --bar-box-shadow: 0 2px 12px var(--shadow-color);
   }
 `;
 
-export const DefaultPrimaryColor = extractVar(
-  colorStyles,
-  "primary-color",
-  coreColorVariables
-);
+export const DefaultPrimaryColor = extractVar(colorStyles, "primary-color", coreColorVariables);
 export const DefaultAccentColor = extractVar(colorStyles, "accent-color");

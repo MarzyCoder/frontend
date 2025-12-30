@@ -5,7 +5,6 @@ import {
   differenceInMilliseconds,
   startOfHour,
 } from "date-fns";
-import { formatInTimeZone, toDate } from "date-fns-tz";
 import type { HassEntity } from "home-assistant-js-websocket";
 import type { CSSResultGroup } from "lit";
 import { LitElement, css, html, nothing } from "lit";
@@ -40,6 +39,11 @@ import "../lovelace/components/hui-generic-entity-row";
 import "./ha-recurrence-rule-editor";
 import { showConfirmEventDialog } from "./show-confirm-event-dialog-box";
 import type { CalendarEventEditDialogParams } from "./show-dialog-calendar-event-editor";
+import {
+  formatDate,
+  formatTime,
+  parseDate,
+} from "../../common/datetime/calc_date";
 
 const CALENDAR_DOMAINS = ["calendar"];
 
@@ -59,6 +63,8 @@ class DialogCalendarEventEditor extends LitElement {
 
   @state() private _description? = "";
 
+  @state() private _location? = "";
+
   @state() private _rrule?: string;
 
   @state() private _allDay = false;
@@ -74,6 +80,8 @@ class DialogCalendarEventEditor extends LitElement {
   // events are persisted, they are relative to the Home Assistant
   // timezone, but floating without a timezone.
   private _timeZone?: string;
+
+  private _hasLocation = false;
 
   public showDialog(params: CalendarEventEditDialogParams): void {
     this._error = undefined;
@@ -95,6 +103,10 @@ class DialogCalendarEventEditor extends LitElement {
       this._allDay = isDate(entry.dtstart);
       this._summary = entry.summary;
       this._description = entry.description;
+      if (entry.location) {
+        this._hasLocation = true;
+        this._location = entry.location;
+      }
       this._rrule = entry.rrule;
       if (this._allDay) {
         this._dtstart = new Date(entry.dtstart + "T00:00:00");
@@ -126,6 +138,8 @@ class DialogCalendarEventEditor extends LitElement {
     this._dtend = undefined;
     this._summary = "";
     this._description = "";
+    this._location = "";
+    this._hasLocation = false;
     this._rrule = undefined;
     fireEvent(this, "dialog-closed", { dialog: this.localName });
   }
@@ -176,6 +190,15 @@ class DialogCalendarEventEditor extends LitElement {
             @input=${this._handleSummaryChanged}
             .validationMessage=${this.hass.localize("ui.common.error_required")}
             dialogInitialFocus
+          ></ha-textfield>
+          <ha-textfield
+            class="location"
+            name="location"
+            .label=${this.hass.localize(
+              "ui.components.calendar.event.location"
+            )}
+            .value=${this._location}
+            @change=${this._handleLocationChanged}
           ></ha-textfield>
           <ha-textarea
             class="description"
@@ -303,27 +326,12 @@ class DialogCalendarEventEditor extends LitElement {
 
   private _getLocaleStrings = memoizeOne(
     (startDate?: Date, endDate?: Date) => ({
-      startDate: this._formatDate(startDate!),
-      startTime: this._formatTime(startDate!),
-      endDate: this._formatDate(endDate!),
-      endTime: this._formatTime(endDate!),
+      startDate: formatDate(startDate!, this._timeZone!),
+      startTime: formatTime(startDate!, this._timeZone!),
+      endDate: formatDate(endDate!, this._timeZone!),
+      endTime: formatTime(endDate!, this._timeZone!),
     })
   );
-
-  // Formats a date in specified timezone, or defaulting to browser display timezone
-  private _formatDate(date: Date, timeZone: string = this._timeZone!): string {
-    return formatInTimeZone(date, timeZone, "yyyy-MM-dd");
-  }
-
-  // Formats a time in specified timezone, or defaulting to browser display timezone
-  private _formatTime(date: Date, timeZone: string = this._timeZone!): string {
-    return formatInTimeZone(date, timeZone, "HH:mm:ss"); // 24 hr
-  }
-
-  // Parse a date in the browser timezone
-  private _parseDate(dateStr: string): Date {
-    return toDate(dateStr, { timeZone: this._timeZone! });
-  }
 
   private _clearInfo() {
     this._info = undefined;
@@ -337,20 +345,34 @@ class DialogCalendarEventEditor extends LitElement {
     this._description = ev.target.value;
   }
 
+  private _handleLocationChanged(ev: Event) {
+    this._location = (ev.target as HTMLInputElement).value;
+  }
+
   private _handleRRuleChanged(ev) {
     this._rrule = ev.detail.value;
   }
 
   private _allDayToggleChanged(ev) {
     this._allDay = ev.target.checked;
+    // When switching to all-day mode, normalize dates to midnight so time portions don't interfere with date comparisons
+    if (this._allDay && this._dtstart && this._dtend) {
+      this._dtstart = new Date(
+        formatDate(this._dtstart, this._timeZone!) + "T00:00:00"
+      );
+      this._dtend = new Date(
+        formatDate(this._dtend, this._timeZone!) + "T00:00:00"
+      );
+    }
   }
 
   private _startDateChanged(ev: CustomEvent) {
     // Store previous event duration
     const duration = differenceInMilliseconds(this._dtend!, this._dtstart!);
 
-    this._dtstart = this._parseDate(
-      `${ev.detail.value}T${this._formatTime(this._dtstart!)}`
+    this._dtstart = parseDate(
+      `${ev.detail.value}T${formatTime(this._dtstart!, this._timeZone!)}`,
+      this._timeZone!
     );
 
     // Prevent that the end time can be before the start time. Try to keep the
@@ -364,8 +386,9 @@ class DialogCalendarEventEditor extends LitElement {
   }
 
   private _endDateChanged(ev: CustomEvent) {
-    this._dtend = this._parseDate(
-      `${ev.detail.value}T${this._formatTime(this._dtend!)}`
+    this._dtend = parseDate(
+      `${ev.detail.value}T${formatTime(this._dtend!, this._timeZone!)}`,
+      this._timeZone!
     );
   }
 
@@ -373,8 +396,9 @@ class DialogCalendarEventEditor extends LitElement {
     // Store previous event duration
     const duration = differenceInMilliseconds(this._dtend!, this._dtstart!);
 
-    this._dtstart = this._parseDate(
-      `${this._formatDate(this._dtstart!)}T${ev.detail.value}`
+    this._dtstart = parseDate(
+      `${formatDate(this._dtstart!, this._timeZone!)}T${ev.detail.value}`,
+      this._timeZone!
     );
 
     // Prevent that the end time can be before the start time. Try to keep the
@@ -388,8 +412,9 @@ class DialogCalendarEventEditor extends LitElement {
   }
 
   private _endTimeChanged(ev: CustomEvent) {
-    this._dtend = this._parseDate(
-      `${this._formatDate(this._dtend!)}T${ev.detail.value}`
+    this._dtend = parseDate(
+      `${formatDate(this._dtend!, this._timeZone!)}T${ev.detail.value}`,
+      this._timeZone!
     );
   }
 
@@ -397,23 +422,24 @@ class DialogCalendarEventEditor extends LitElement {
     const data: CalendarEventMutableParams = {
       summary: this._summary,
       description: this._description,
+      location: this._location || (this._hasLocation ? "" : undefined),
       rrule: this._rrule || undefined,
       dtstart: "",
       dtend: "",
     };
     if (this._allDay) {
-      data.dtstart = this._formatDate(this._dtstart!);
+      data.dtstart = formatDate(this._dtstart!, this._timeZone!);
       // End date/time is exclusive when persisted
-      data.dtend = this._formatDate(addDays(this._dtend!, 1));
+      data.dtend = formatDate(addDays(this._dtend!, 1), this._timeZone!);
     } else {
-      data.dtstart = `${this._formatDate(
+      data.dtstart = `${formatDate(
         this._dtstart!,
         this.hass.config.time_zone
-      )}T${this._formatTime(this._dtstart!, this.hass.config.time_zone)}`;
-      data.dtend = `${this._formatDate(
+      )}T${formatTime(this._dtstart!, this.hass.config.time_zone)}`;
+      data.dtend = `${formatDate(
         this._dtend!,
         this.hass.config.time_zone
-      )}T${this._formatTime(this._dtend!, this.hass.config.time_zone)}`;
+      )}T${formatTime(this._dtend!, this.hass.config.time_zone)}`;
     }
     return data;
   }

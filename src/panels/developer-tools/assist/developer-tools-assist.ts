@@ -12,7 +12,7 @@ import "../../../components/ha-code-editor";
 import "../../../components/ha-language-picker";
 import "../../../components/ha-textarea";
 import type { HaTextArea } from "../../../components/ha-textarea";
-import type { AssitDebugResult } from "../../../data/conversation";
+import type { AssistDebugResult } from "../../../data/conversation";
 import { debugAgent, listAgents } from "../../../data/conversation";
 import { SubscribeMixin } from "../../../mixins/subscribe-mixin";
 import { haStyle } from "../../../resources/styles";
@@ -22,7 +22,7 @@ import { fileDownload } from "../../../util/file_download";
 interface SentenceParsingResult {
   sentence: string;
   language: string;
-  result: AssitDebugResult | null;
+  result: AssistDebugResult | null;
 }
 
 @customElement("developer-tools-assist")
@@ -240,17 +240,13 @@ class HaPanelDevAssist extends SubscribeMixin(LitElement) {
       haStyle,
       css`
         .content {
-          padding: 28px 20px 16px;
-          padding: max(28px, calc(12px + var(--safe-area-inset-top)))
-            max(20px, calc(4px + var(--safe-area-inset-right)))
-            max(16px, var(--safe-area-inset-bottom))
-            max(20px, calc(4px + var(--safe-area-inset-left)));
+          padding: var(--ha-space-7) var(--ha-space-5) var(--ha-space-4);
           max-width: 1040px;
           margin: 0 auto;
         }
         .description {
           margin: 0;
-          margin-bottom: 16px;
+          margin-bottom: var(--ha-space-4);
         }
         ha-textarea {
           width: 100%;
@@ -259,18 +255,18 @@ class HaPanelDevAssist extends SubscribeMixin(LitElement) {
           text-align: right;
         }
         .form {
-          margin-bottom: 16px;
+          margin-bottom: var(--ha-space-4);
         }
         .result-toolbar {
           text-align: center;
-          margin-bottom: 16px;
+          margin-bottom: var(--ha-space-4);
         }
         .result {
-          margin-bottom: 16px;
+          margin-bottom: var(--ha-space-4);
         }
         .sentence {
           font-weight: var(--ha-font-weight-medium);
-          margin-bottom: 8px;
+          margin-bottom: var(--ha-space-2);
           display: flex;
           flex-direction: row;
           justify-content: space-between;
@@ -284,7 +280,7 @@ class HaPanelDevAssist extends SubscribeMixin(LitElement) {
         ha-code-editor,
         ha-alert {
           display: block;
-          margin-top: 16px;
+          margin-top: var(--ha-space-4);
         }
       `,
     ];

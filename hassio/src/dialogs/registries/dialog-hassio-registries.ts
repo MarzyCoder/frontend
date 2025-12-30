@@ -88,8 +88,8 @@ class HassioRegistriesDialog extends LitElement {
                 <ha-button
                   ?disabled=${Boolean(
                     !this._input.registry ||
-                      !this._input.username ||
-                      !this._input.password
+                    !this._input.username ||
+                    !this._input.password
                   )}
                   @click=${this._addNewRegistry}
                   appearance="filled"
@@ -228,7 +228,7 @@ class HassioRegistriesDialog extends LitElement {
       css`
         .registry {
           border: 1px solid var(--divider-color);
-          border-radius: 4px;
+          border-radius: var(--ha-border-radius-sm);
           margin-top: 4px;
         }
         .action {

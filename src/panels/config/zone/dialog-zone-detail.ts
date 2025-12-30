@@ -1,6 +1,6 @@
 import type { CSSResultGroup } from "lit";
 import { css, html, LitElement, nothing } from "lit";
-import { property, state } from "lit/decorators";
+import { customElement, property, state } from "lit/decorators";
 import memoizeOne from "memoize-one";
 import { fireEvent } from "../../../common/dom/fire_event";
 import { addDistanceToCoord } from "../../../common/location/add_distance_to_coord";
@@ -14,6 +14,7 @@ import { haStyleDialog } from "../../../resources/styles";
 import type { HomeAssistant } from "../../../types";
 import type { ZoneDetailDialogParams } from "./show-dialog-zone-detail";
 
+@customElement("dialog-zone-detail")
 class DialogZoneDetail extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
@@ -224,9 +225,8 @@ class DialogZoneDetail extends LitElement {
         }
         @media all and (max-width: 450px), all and (max-height: 500px) {
           ha-dialog {
-            --mdc-dialog-min-width: calc(
-              100vw - var(--safe-area-inset-right) - var(--safe-area-inset-left)
-            );
+            --mdc-dialog-min-width: 100vw;
+            --mdc-dialog-max-width: 100vw;
           }
         }
         ha-form.passive {
@@ -242,5 +242,3 @@ declare global {
     "dialog-zone-detail": DialogZoneDetail;
   }
 }
-
-customElements.define("dialog-zone-detail", DialogZoneDetail);

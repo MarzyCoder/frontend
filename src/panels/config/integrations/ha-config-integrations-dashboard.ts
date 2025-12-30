@@ -17,11 +17,11 @@ import { navigate } from "../../../common/navigate";
 import { caseInsensitiveStringCompare } from "../../../common/string/compare";
 import { extractSearchParam } from "../../../common/url/search-params";
 import { nextRender } from "../../../common/util/render-status";
+import "../../../components/ha-button";
 import "../../../components/ha-button-menu";
 import "../../../components/ha-check-list-item";
 import "../../../components/ha-checkbox";
 import "../../../components/ha-fab";
-import "../../../components/ha-button";
 import "../../../components/ha-icon-button";
 import "../../../components/ha-svg-icon";
 import "../../../components/search-input";
@@ -29,9 +29,9 @@ import "../../../components/search-input-outlined";
 import type { ConfigEntry } from "../../../data/config_entries";
 import { getConfigEntries } from "../../../data/config_entries";
 import { fetchDiagnosticHandlers } from "../../../data/diagnostics";
-import type { EntityRegistryEntry } from "../../../data/entity_registry";
-import { subscribeEntityRegistry } from "../../../data/entity_registry";
-import { fetchEntitySourcesWithCache } from "../../../data/entity_sources";
+import type { EntityRegistryEntry } from "../../../data/entity/entity_registry";
+import { subscribeEntityRegistry } from "../../../data/entity/entity_registry";
+import { fetchEntitySourcesWithCache } from "../../../data/entity/entity_sources";
 import type {
   IntegrationLogInfo,
   IntegrationManifest,
@@ -336,9 +336,7 @@ class HaConfigIntegrationsDashboard extends KeyboardShortcutMixin(
     super.firstUpdated(changed);
     this._fetchManifests();
     this._fetchEntitySources();
-    if (this.route.path === "/add") {
-      this._handleAdd();
-    }
+    this._handleRouteChanged();
     this._scanUSBDevices();
     this._scanImprovDevices();
 
@@ -355,6 +353,9 @@ class HaConfigIntegrationsDashboard extends KeyboardShortcutMixin(
 
   protected updated(changed: PropertyValues) {
     super.updated(changed);
+    if (changed.has("route")) {
+      this._handleRouteChanged();
+    }
     if (
       (this._searchParms.has("config_entry") ||
         this._searchParms.has("domain")) &&
@@ -478,10 +479,7 @@ class HaConfigIntegrationsDashboard extends KeyboardShortcutMixin(
                 </search-input-outlined>
                 <div class="filters">
                   ${!this._showDisabled && disabledConfigEntries.length
-                    ? html`<div
-                        class="active-filters"
-                        @click=${this._preventDefault}
-                      >
+                    ? html`<div class="active-filters">
                         ${this.hass.localize(
                           "ui.panel.config.integrations.disable.disabled_integrations",
                           { number: disabledConfigEntries.length }
@@ -496,7 +494,7 @@ class HaConfigIntegrationsDashboard extends KeyboardShortcutMixin(
                           )}
                         </ha-button>
                       </div>`
-                    : ""}
+                    : nothing}
                   ${filterMenu}
                 </div>
               </div>
@@ -668,10 +666,6 @@ class HaConfigIntegrationsDashboard extends KeyboardShortcutMixin(
     `;
   }
 
-  private _preventDefault(ev) {
-    ev.preventDefault();
-  }
-
   private async _scanUSBDevices() {
     if (!isComponentLoaded(this.hass, "usb")) {
       return;
@@ -820,10 +814,13 @@ class HaConfigIntegrationsDashboard extends KeyboardShortcutMixin(
     }
   }
 
-  private async _handleAdd() {
+  private async _handleRouteChanged() {
+    if (this.route?.path !== "/add") {
+      return;
+    }
     const brand = extractSearchParam("brand");
     const domain = extractSearchParam("domain");
-    navigate("/config/integrations", { replace: true });
+    navigate("/config/integrations/dashboard/", { replace: true });
 
     if (brand) {
       showAddIntegrationDialog(this, {
@@ -1020,7 +1017,7 @@ class HaConfigIntegrationsDashboard extends KeyboardShortcutMixin(
           z-index: 2;
           background-color: var(--primary-background-color);
           padding: 0 16px;
-          gap: 16px;
+          gap: var(--ha-space-4);
           box-sizing: border-box;
           border-bottom: 1px solid var(--divider-color);
         }
@@ -1036,13 +1033,10 @@ class HaConfigIntegrationsDashboard extends KeyboardShortcutMixin(
         }
         .active-filters {
           color: var(--primary-text-color);
-          position: relative;
           display: flex;
           align-items: center;
-          padding-top: 2px;
-          padding-bottom: 2px;
-          padding-right: 2px;
-          padding-left: 8px;
+          padding: 2px 2px 2px 8px;
+          line-height: 1;
           padding-inline-start: 8px;
           padding-inline-end: 2px;
           font-size: var(--ha-font-size-m);
@@ -1050,6 +1044,8 @@ class HaConfigIntegrationsDashboard extends KeyboardShortcutMixin(
           cursor: initial;
           direction: var(--direction);
           height: 32px;
+          background-color: var(--ha-color-fill-primary-normal-resting);
+          border-radius: var(--ha-border-radius-sm);
         }
         .active-filters ha-button {
           margin-left: 8px;
@@ -1057,21 +1053,10 @@ class HaConfigIntegrationsDashboard extends KeyboardShortcutMixin(
           margin-inline-end: initial;
           direction: var(--direction);
         }
-        .active-filters::before {
-          background-color: var(--primary-color);
-          opacity: 0.12;
-          border-radius: 4px;
-          position: absolute;
-          top: 0;
-          right: 0;
-          bottom: 0;
-          left: 0;
-          content: "";
-        }
         .badge {
           min-width: 20px;
           min-height: 20px;
-          border-radius: 50%;
+          border-radius: var(--ha-border-radius-circle);
           font-weight: var(--ha-font-weight-normal);
           background-color: var(--primary-color);
           display: flex;

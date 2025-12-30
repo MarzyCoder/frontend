@@ -20,6 +20,8 @@ import "../../../../components/ha-dialog";
 import "../../../../components/ha-dialog-header";
 import "../../../../components/ha-list-item";
 import "../../../../components/ha-spinner";
+import "../../../../components/ha-tab-group";
+import "../../../../components/ha-tab-group-tab";
 import "../../../../components/ha-yaml-editor";
 import type { HaYamlEditor } from "../../../../components/ha-yaml-editor";
 import {
@@ -34,7 +36,10 @@ import {
   showAlertDialog,
   showConfirmationDialog,
 } from "../../../../dialogs/generic/show-dialog-box";
-import { haStyleDialog } from "../../../../resources/styles";
+import {
+  haStyleDialog,
+  haStyleDialogFixedTop,
+} from "../../../../resources/styles";
 import type { HomeAssistant } from "../../../../types";
 import "../../components/hui-entity-editor";
 import type { Lovelace } from "../../types";
@@ -53,7 +58,6 @@ import "./hui-view-background-editor";
 import "./hui-view-editor";
 import "./hui-view-visibility-editor";
 import type { EditViewDialogParams } from "./show-edit-view-dialog";
-import "../../../../components/sl-tab-group";
 
 const TABS = ["tab-settings", "tab-background", "tab-visibility"] as const;
 
@@ -274,10 +278,10 @@ export class HuiDialogEditView extends LitElement {
               `
             : nothing}
           ${!this._yamlMode
-            ? html`<sl-tab-group @sl-tab-show=${this._handleTabChanged}>
+            ? html`<ha-tab-group @wa-tab-show=${this._handleTabChanged}>
                 ${TABS.map(
                   (tab) => html`
-                    <sl-tab
+                    <ha-tab-group-tab
                       slot="nav"
                       .panel=${tab}
                       .active=${this._currTab === tab}
@@ -285,10 +289,10 @@ export class HuiDialogEditView extends LitElement {
                       ${this.hass!.localize(
                         `ui.panel.lovelace.editor.edit_view.${tab.replace("-", "_")}`
                       )}
-                    </sl-tab>
+                    </ha-tab-group-tab>
                   `
                 )}
-              </sl-tab-group>`
+              </ha-tab-group>`
             : nothing}
         </ha-dialog-header>
         ${content}
@@ -630,19 +634,8 @@ export class HuiDialogEditView extends LitElement {
   static get styles(): CSSResultGroup {
     return [
       haStyleDialog,
+      haStyleDialogFixedTop,
       css`
-        ha-dialog {
-          /* Set the top top of the dialog to a fixed position, so it doesnt jump when the content changes size */
-          --vertical-align-dialog: flex-start;
-          --dialog-surface-margin-top: 40px;
-        }
-
-        @media all and (max-width: 450px), all and (max-height: 500px) {
-          /* When in fullscreen dialog should be attached to top */
-          ha-dialog {
-            --dialog-surface-margin-top: 0px;
-          }
-        }
         ha-dialog.yaml-mode {
           --dialog-content-padding: 0;
         }
@@ -651,10 +644,10 @@ export class HuiDialogEditView extends LitElement {
           font-size: inherit;
           font-weight: inherit;
         }
-        sl-tab {
+        ha-tab-group-tab {
           flex: 1;
         }
-        sl-tab::part(base) {
+        ha-tab-group-tab::part(base) {
           width: 100%;
           justify-content: center;
         }

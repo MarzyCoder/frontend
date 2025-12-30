@@ -1,3 +1,4 @@
+import "@home-assistant/webawesome/dist/components/divider/divider";
 import { ResizeController } from "@lit-labs/observers/resize-controller";
 import {
   mdiChevronDown,
@@ -23,6 +24,10 @@ import {
   extractSearchParam,
 } from "../../common/url/search-params";
 import "../../components/ha-button";
+import "../../components/ha-button-menu";
+import "../../components/ha-dropdown";
+import "../../components/ha-dropdown-item";
+import type { HaDropdownItem } from "../../components/ha-dropdown-item";
 import "../../components/ha-fab";
 import "../../components/ha-icon-button";
 import "../../components/ha-list";
@@ -32,7 +37,7 @@ import "../../components/ha-state-icon";
 import "../../components/ha-svg-icon";
 import "../../components/ha-two-pane-top-app-bar-fixed";
 import { deleteConfigEntry } from "../../data/config_entries";
-import { getExtendedEntityRegistryEntry } from "../../data/entity_registry";
+import { getExtendedEntityRegistryEntry } from "../../data/entity/entity_registry";
 import { fetchIntegrationManifest } from "../../data/integration";
 import type { LovelaceCardConfig } from "../../data/lovelace/config/card";
 import { TodoListEntityFeature, getTodoLists } from "../../data/todo";
@@ -165,7 +170,11 @@ class PanelTodo extends LitElement {
         </ha-list-item> `
     );
     return html`
-      <ha-two-pane-top-app-bar-fixed .pane=${showPane} footer>
+      <ha-two-pane-top-app-bar-fixed
+        .pane=${showPane}
+        footer
+        .narrow=${this.narrow}
+      >
         <ha-menu-button
           slot="navigationIcon"
           .hass=${this.hass}
@@ -218,47 +227,41 @@ class PanelTodo extends LitElement {
               ${this.hass.localize("ui.panel.todo.create_list")}
             </ha-list-item>`
           : nothing}
-        <ha-button-menu slot="actionItems">
+        <ha-dropdown
+          slot="actionItems"
+          @wa-select=${this._handleDropdownSelect}
+        >
           <ha-icon-button
             slot="trigger"
             .label=${""}
             .path=${mdiDotsVertical}
           ></ha-icon-button>
           ${this._conversation(this.hass.config.components)
-            ? html`<ha-list-item
-                graphic="icon"
-                @click=${this._showMoreInfoDialog}
-                .disabled=${!this._entityId}
-              >
-                <ha-svg-icon .path=${mdiInformationOutline} slot="graphic">
+            ? html`<ha-dropdown-item value="info" .disabled=${!this._entityId}>
+                <ha-svg-icon .path=${mdiInformationOutline} slot="icon">
                 </ha-svg-icon>
                 ${this.hass.localize("ui.panel.todo.information")}
-              </ha-list-item>`
+              </ha-dropdown-item>`
             : nothing}
-          <li divider role="separator"></li>
-          <ha-list-item graphic="icon" @click=${this._showVoiceCommandDialog}>
-            <ha-svg-icon .path=${mdiCommentProcessingOutline} slot="graphic">
+          <wa-divider></wa-divider>
+          <ha-dropdown-item value="assist">
+            <ha-svg-icon .path=${mdiCommentProcessingOutline} slot="icon">
             </ha-svg-icon>
             ${this.hass.localize("ui.panel.todo.assist")}
-          </ha-list-item>
+          </ha-dropdown-item>
           ${entityRegistryEntry?.platform === "local_todo"
-            ? html` <li divider role="separator"></li>
-                <ha-list-item
-                  graphic="icon"
-                  @click=${this._deleteList}
-                  class="warning"
+            ? html` <wa-divider></wa-divider>
+                <ha-dropdown-item
+                  value="delete"
+                  variant="danger"
                   .disabled=${!this._entityId}
                 >
-                  <ha-svg-icon
-                    .path=${mdiDelete}
-                    slot="graphic"
-                    class="warning"
-                  >
+                  <ha-svg-icon .path=${mdiDelete} slot="icon" class="warning">
                   </ha-svg-icon>
                   ${this.hass.localize("ui.panel.todo.delete_list")}
-                </ha-list-item>`
+                </ha-dropdown-item>`
             : nothing}
-        </ha-button-menu>
+        </ha-dropdown>
         <div id="columns">
           <div class="column">
             ${this._entityId
@@ -359,6 +362,26 @@ class PanelTodo extends LitElement {
     showTodoItemEditDialog(this, { entity: this._entityId! });
   }
 
+  private _handleDropdownSelect(ev: CustomEvent<{ item: HaDropdownItem }>) {
+    const action = ev.detail?.item?.value;
+
+    if (!action) {
+      return;
+    }
+
+    switch (action) {
+      case "info":
+        this._showMoreInfoDialog();
+        break;
+      case "assist":
+        this._showVoiceCommandDialog();
+        break;
+      case "delete":
+        this._deleteList();
+        break;
+    }
+  }
+
   static get styles(): CSSResultGroup {
     return [
       haStyle,
@@ -403,9 +426,9 @@ class PanelTodo extends LitElement {
         }
         ha-fab {
           position: fixed;
-          right: 16px;
-          bottom: 16px;
-          inset-inline-end: 16px;
+          right: calc(16px + var(--safe-area-inset-right, 0px));
+          bottom: calc(16px + var(--safe-area-inset-bottom, 0px));
+          inset-inline-end: calc(16px + var(--safe-area-inset-right, 0px));
           inset-inline-start: initial;
         }
       `,
