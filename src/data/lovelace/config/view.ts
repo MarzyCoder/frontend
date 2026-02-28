@@ -37,6 +37,11 @@ export interface LovelaceViewHeaderConfig {
   badges_wrap?: "wrap" | "scroll";
 }
 
+export interface LovelaceViewFooterConfig {
+  card?: LovelaceCardConfig;
+  column_span?: number;
+}
+
 export interface LovelaceViewSidebarConfig {
   sections?: LovelaceSectionConfig[];
   content_label?: string;
@@ -49,6 +54,7 @@ export interface LovelaceBaseViewConfig {
   title?: string;
   path?: string;
   icon?: string;
+  show_icon_and_title?: boolean;
   theme?: string;
   panel?: boolean;
   background?: string | LovelaceViewBackgroundConfig;
@@ -67,6 +73,7 @@ export interface LovelaceViewConfig extends LovelaceBaseViewConfig {
   cards?: LovelaceCardConfig[];
   sections?: LovelaceSectionRawConfig[];
   header?: LovelaceViewHeaderConfig;
+  footer?: LovelaceViewFooterConfig;
   // Only used for section view, it should move to a section view config type when the views will have dedicated editor.
   sidebar?: LovelaceViewSidebarConfig;
 }
